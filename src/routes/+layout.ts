@@ -17,7 +17,7 @@ export const load: LayoutLoad = async ({ fetch, data, depends }) => {
         },
         cookies: {
           getAll() {
-            return data.cookies
+            return data.cookies || []
           },
         },
       })
