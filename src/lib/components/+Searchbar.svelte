@@ -22,6 +22,7 @@
         debounceTime?: number;
     } = $props();
 
+    // svelte-ignore state_referenced_locally
     const debouncedSearch = debounce(() => {
         if (!value || value.length === 0)
         {

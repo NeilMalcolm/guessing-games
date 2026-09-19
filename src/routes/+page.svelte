@@ -4,10 +4,15 @@
 	import SearchItem from '$lib/components/+SearchItem.svelte';
 	import Guess from '$lib/components/+Guess.svelte';
 	import type { GuessResponse } from '$lib/types/guess';
+	import type { PageData } from './$types';
+    import { untrack } from 'svelte';
+
+    let { data }: { data: PageData } = $props();
 
     let searchQuery = $state('')
     let searchResults: SearchResponse | null = $state(null);
-    let guesses: GuessResponse[] = $state([]);
+    
+    const guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
 
     /**
      * Handles search from the searchbar.

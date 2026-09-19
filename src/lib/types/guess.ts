@@ -1,3 +1,4 @@
+import type { GameSessionStatus } from "./supabasetables";
 
 export interface GuessResponse {
   title: string;
@@ -8,6 +9,8 @@ export interface GuessResponse {
   ratingResult: PropertyResult;
   castMembersResult: PropertyResult[];
   ageRatingResult: PropertyResult;
+  isCorrect: boolean;
+  status: GameSessionStatus;
 }
 
 export interface PropertyResult {
