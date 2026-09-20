@@ -23,6 +23,7 @@ export interface Movie {
   poster_path: string | null;
   genres: string[];
   director: string | null;
+  director_profile_path: string | null;
   popularity: number | null;
   cast_members: CastMember[];
   box_office: number | null;
