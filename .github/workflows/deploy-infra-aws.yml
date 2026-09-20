@@ -29,14 +29,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './infra/package-lock.json'
           
-      - name: Print OIDC sub claim
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const token = await core.getIDToken('sts.amazonaws.com');
-            const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-            core.info(`\n\n👉 THE EXACT SUB CLAIM IS: ${payload.sub}\n\n`);
-            
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:

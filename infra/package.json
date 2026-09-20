@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.1136.0",
+    "@supabase/supabase-js": "^2.116.0",
     "aws-cdk-lib": "^2.269.0",
     "constructs": "^10.5.0"
   }
