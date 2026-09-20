@@ -34,10 +34,23 @@ jobs:
           TMDB_BASE_URL: ${{ vars.TMDB_BASE_URL }}
           PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        
+
       - name: Install Playwright
         run: npx playwright install
 
       - name: Test
         run: npm run test
+
+      - name: Install infra dependencies
+        run: npm ci
+        working-directory: ./infra
+
+      - name: Verify infra (cdk synth)
+        run: npx cdk synth
+        working-directory: ./infra
+        env:
+          SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN }}
+        
 
