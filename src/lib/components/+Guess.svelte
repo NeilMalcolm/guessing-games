@@ -63,7 +63,7 @@
         </div>
 
         {#if guess.genresResult && guess.genresResult.length > 0}
-            <div class="flex flex-wrap gap-1 items-center">
+            <div class="flex flex-wrap gap-1 items-center" title="Genres">
                 {#each guess.genresResult as genreResult}
                     <span class={`${getBadgeClassForMatch(genreResult.match)} badge-sm`}>{genreResult.value}</span>
                 {/each}
@@ -72,7 +72,7 @@
 
         {#if guess.castMembersResult && guess.castMembersResult.length > 0}
             <div class="text-xs uppercase opacity-70 mr-1">Cast</div>
-            <div class="flex flex-wrap gap-1 items-center">
+            <div class="flex flex-wrap gap-1 items-center" title="Cast">
                 {#each guess.castMembersResult as castResult}
                     <span class={`${getBadgeClassForMatch(castResult.match)} badge-sm`}>{castResult.value}</span>
                 {/each}
