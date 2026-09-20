@@ -16,6 +16,7 @@ export class InfraStack extends cdk.Stack {
 
     const batchFetcherLambda = new NodejsFunction(this, 'BatchMovieFetcher', {
       runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       entry: path.join(__dirname, '../src/batch-movie-fetcher.ts'),
       handler: 'handler',
       timeout: cdk.Duration.minutes(5),
