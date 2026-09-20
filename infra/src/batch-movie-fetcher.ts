@@ -1,6 +1,8 @@
 import { SSMClient, GetParameterCommand, PutParameterCommand } from "@aws-sdk/client-ssm";
 import { createClient } from "@supabase/supabase-js";
+import { Logger } from "@aws-lambda-powertools/logger";
 
+const logger = new Logger({ serviceName: 'batch-movie-fetcher' });
 const ssm = new SSMClient({});
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -12,6 +14,7 @@ const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 export const handler = async (event: any) => {
   console.log("Starting batch fetcher...");
+  logger.info("Starting batch fetcher...");
 
   // 1. Get current page
   let currentPage = 1;
@@ -20,10 +23,12 @@ export const handler = async (event: any) => {
     currentPage = parseInt(res.Parameter?.Value || "1", 10);
   } catch (err: any) {
     console.error("Failed to read SSM param, defaulting to page 1", err);
+    logger.error("Failed to read SSM param, defaulting to page 1", { err });
   }
 
   if (currentPage > 500) {
     console.log("Reached page 500 max limit. Stopping.");
+    logger.info("Reached page 500 max limit. Stopping.");
     return;
   }
 
@@ -33,6 +38,7 @@ export const handler = async (event: any) => {
   for (let p = currentPage; p < currentPage + 5; p++) {
     if (p > 500) break;
     console.log(`Fetching discover page ${p}`);
+    logger.info(`Fetching discover page ${p}`);
     
     // 1. Query discover
     const discoverUrl = `${TMDB_BASE_URL}/discover/movie?page=${p}&region=GB&sort_by=popularity.desc&certification=GB&with_release_type=1|2|3&vote_average.gte=1&with_origin_country=GB|US&vote_count.gte=1000`;
@@ -45,6 +51,7 @@ export const handler = async (event: any) => {
     });
     if (!discoverRes.ok) {
       console.error(`Discover failed for page ${p}`, await discoverRes.text());
+      logger.error(`Discover failed for page ${p}`, { error: await discoverRes.text() });
       continue;
     }
     
@@ -62,6 +69,7 @@ export const handler = async (event: any) => {
       });
       if (!detailsRes.ok) {
         console.error(`Details failed for movie ${movie.id}`, await detailsRes.text());
+        logger.error(`Details failed for movie ${movie.id}`, { error: await detailsRes.text() });
         continue;
       }
       
@@ -133,12 +141,14 @@ export const handler = async (event: any) => {
   }
 
   console.log(`Fetched ${moviesToInsert.length} movies. Upserting to Supabase...`);
+  logger.info(`Fetched ${moviesToInsert.length} movies. Upserting to Supabase...`);
 
   // 3. Write to Supabase
   if (moviesToInsert.length > 0) {
     const { error } = await supabase.from("movies").upsert(moviesToInsert, { onConflict: "id" });
     if (error) {
       console.error("Supabase upsert error:", error);
+      logger.error("Supabase upsert error:", { error });
       throw error;
     }
   }
@@ -152,4 +162,5 @@ export const handler = async (event: any) => {
     Overwrite: true,
   }));
   console.log(`Updated SSM parameter to ${nextPage}`);
+  logger.info(`Updated SSM parameter to ${nextPage}`);
 };
