@@ -125,6 +125,22 @@ export const handler = async (event: any) => {
         }
       }
 
+      // 4. Validate essential fields
+      if (
+        !details.title ||
+        !details.poster_path ||
+        !details.release_date ||
+        !director ||
+        !cast_members || cast_members.length === 0 ||
+        !details.genres || details.genres.length === 0 ||
+        !details.revenue || details.revenue <= 0 ||
+        !details.vote_average || details.vote_average <= 0 ||
+        minAge === null
+      ) {
+        logger.info(`Skipping movie ${details.id} (${details.title || 'Unknown'}): Missing essential fields for the game`);
+        continue;
+      }
+
       moviesToInsert.push({
         id: details.id,
         title: details.title,
