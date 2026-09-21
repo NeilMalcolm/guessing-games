@@ -60,5 +60,23 @@ export class InfraStack extends cdk.Stack {
       schedule: events.Schedule.rate(cdk.Duration.minutes(2)),
     });
     rule.addTarget(new targets.LambdaFunction(batchFetcherLambda));
+
+    // Daily Movie Picker Lambda
+    const dailyPickerLambda = new NodejsFunction(this, 'DailyMoviePicker', {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: path.join(__dirname, '../src/daily-movie-picker.ts'),
+      handler: 'handler',
+      timeout: cdk.Duration.minutes(1),
+      environment: {
+        SUPABASE_URL: process.env.SUPABASE_URL || '',
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      },
+    });
+
+    // EventBridge Rule: Run at 23:00 UTC every day
+    const dailyRule = new events.Rule(this, 'DailyPickerScheduleRule', {
+      schedule: events.Schedule.cron({ minute: '0', hour: '23' }),
+    });
+    dailyRule.addTarget(new targets.LambdaFunction(dailyPickerLambda));
   }
 }
