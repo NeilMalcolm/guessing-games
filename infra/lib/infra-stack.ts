@@ -31,7 +31,7 @@ export class InfraStack extends cdk.Stack {
     const paramName = '/guessing-games/tmdb-batch-fetcher/current-page';
 
     const batchFetcherLambda = new NodejsFunction(this, 'BatchMovieFetcher', {
-      runtime: lambda.Runtime.NODEJS_22_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       entry: path.join(__dirname, '../src/batch-movie-fetcher.ts'),
       handler: 'handler',
       timeout: cdk.Duration.minutes(5),
@@ -63,7 +63,7 @@ export class InfraStack extends cdk.Stack {
 
     // Daily Movie Picker Lambda
     const dailyPickerLambda = new NodejsFunction(this, 'DailyMoviePicker', {
-      runtime: lambda.Runtime.NODEJS_22_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       entry: path.join(__dirname, '../src/daily-movie-picker.ts'),
       handler: 'handler',
       timeout: cdk.Duration.minutes(1),

@@ -6,8 +6,7 @@ import type { GuessResponse } from '$lib/types/guess';
 
 export const load: PageServerLoad = async ({ locals }) => {
     // 1. Get user session
-    const { user } = await locals.safeGetSession();
-    
+    const { user, session} = await locals.safeGetSession();
     // If no user, they haven't guessed yet, return empty
     if (!user) {
         console.log('no user, returning []');
@@ -16,6 +15,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
     // 2. Get today's movie
     const today = new Date().toISOString().split('T')[0]; 
+    console.log(`today's date ${today}`);
     const { data: dailyData } = await supabaseAdmin
         .from(dailyMoviesTable)
         .select(`
