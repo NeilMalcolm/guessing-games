@@ -7,7 +7,7 @@ import type { GameSessionStatus } from '$lib/types/supabasetables';
 
 describe('Welcome.svelte', () => {
     it('renders guess content text correctly', async () => {
-        render(Guess, { guess: getFullGuessResponse() });
+        render(Guess, { guess: getFullGuessResponse(), index: 0 });
 
         // We should see title as a heading
         await expect
@@ -22,12 +22,12 @@ describe('Welcome.svelte', () => {
         // We should see rating
         await expect
             .element(page.getByTitle('Rating Score'))
-            .toHaveTextContent('Rating: 78/100');
+            .toHaveTextContent('78/100');
             
         // We should see age rating
         await expect
             .element(page.getByTitle('Age Rating / Certification'))
-            .toHaveTextContent('Cert: 12A');
+            .toHaveTextContent('12A');
 
         // We should see genres show
         const genresDiv = page.getByTitle('Genres');
@@ -41,27 +41,27 @@ describe('Welcome.svelte', () => {
     });
     
     it('renders matched values correctly', async () => {
-        render(Guess, { guess: getGuessResponseWithMatch(Match.Exact) });
+        render(Guess, { guess: getGuessResponseWithMatch(Match.Exact), index: 0 });
         await assertMatchFields('badge-success', '');
     });
     
     it('renders high match values correctly', async () => {
-        render(Guess, { guess: getGuessResponseWithMatch(Match.Higher) });
+        render(Guess, { guess: getGuessResponseWithMatch(Match.Higher), index: 1 });
         await assertMatchFields('badge-neutral', '↑');
     });
     
     it('renders close-high match values correctly', async () => {
-        render(Guess, { guess: getGuessResponseWithMatch(Match.HigherClose) });
+        render(Guess, { guess: getGuessResponseWithMatch(Match.HigherClose), index: 2 });
         await assertMatchFields('badge-warning', '↑');
     });
     
     it('renders low match values correctly', async () => {
-        render(Guess, { guess: getGuessResponseWithMatch(Match.Lower) });
+        render(Guess, { guess: getGuessResponseWithMatch(Match.Lower), index: 3 });
         await assertMatchFields('badge-neutral', '↓');
     });
     
     it('renders close-low match values correctly', async () => {
-        render(Guess, { guess: getGuessResponseWithMatch(Match.LowerClose) });
+        render(Guess, { guess: getGuessResponseWithMatch(Match.LowerClose), index: 4 });
         await assertMatchFields('badge-warning', '↓');
     });
     
@@ -70,9 +70,9 @@ describe('Welcome.svelte', () => {
 async function assertMatchFields(expectedClass: string, arrow: string) {
     const expectations = [
         { title: 'Release Year', text: `2026 ${arrow}`.trim() },
-        { title: 'Box Office Revenue', text: `Box Office: $2.5M ${arrow}`.trim() },
-        { title: 'Rating Score', text: `Rating: 78/100 ${arrow}`.trim() },
-        { title: 'Age Rating / Certification', text: `Cert: 12A ${arrow}`.trim() }
+        { title: 'Box Office Revenue', text: `$2.5M ${arrow}`.trim() },
+        { title: 'Rating Score', text: `78/100 ${arrow}`.trim() },
+        { title: 'Age Rating / Certification', text: `12A ${arrow}`.trim() }
     ];
 
     for (const { title, text } of expectations) {
