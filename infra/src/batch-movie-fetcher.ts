@@ -15,7 +15,7 @@ const SSM_PAGE_PARAM = process.env.SSM_PAGE_PARAMETER_NAME!;
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const BUCKET_NAME = process.env.S3_BUCKET_NAME!;
 const JSON_FILE_KEY = process.env.S3_JSON_KEY!;
-const linesToRead = 500;
+const linesToRead = 100;
 
 export const handler = async (event: any) => {
   logger.info("Starting batch fetcher...");

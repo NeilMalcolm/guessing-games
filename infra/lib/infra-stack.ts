@@ -55,11 +55,10 @@ export class InfraStack extends cdk.Stack {
       resources: [paramArn],
     }));
 
-    // EventBridge Rule: every 1 minute
+    // EventBridge Rule: every 2 minutes
     const rule = new events.Rule(this, 'BatchFetcherScheduleRule', {
-      schedule: events.Schedule.rate(cdk.Duration.minutes(1)),
+      schedule: events.Schedule.rate(cdk.Duration.minutes(2)),
     });
-
     rule.addTarget(new targets.LambdaFunction(batchFetcherLambda));
   }
 }
