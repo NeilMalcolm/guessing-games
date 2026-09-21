@@ -2,8 +2,6 @@ import { Match, type GuessResponse } from "$lib/types/guess";
 import type { Movie } from "$lib/types/supabasetables";
 import { PUBLIC_TMDB_THUMB_URL } from "$env/static/public";
 import type { GameSessionStatus } from "$lib/types/supabasetables";
-import type { TmdbMovie } from "$lib/types/tmdb";
-import { tmdb } from "$lib/tmdbClient";
 
 export function formatCurrency(amount: number | null): string {
   if (!amount || amount === 0) return "$0";

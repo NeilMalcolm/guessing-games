@@ -1,15 +1,9 @@
 import type { RequestHandler } from "./$types";
 import { supabaseAdmin } from "$lib/supabaseAdmin";
-import { tmdb } from "$lib/tmdbClient";
 import { json, error as jsonError } from "@sveltejs/kit";
-import type { DailyMovieWithDetails, Movie, GameSession, GameSessionResponse, GameSessionStatus, Guess } from "$lib/types/supabasetables";
-import { dailyMoviesTable, guessTable, gamesSessionTable, moviesTable } from "$lib/types/supabasetables";
-import { PUBLIC_TMDB_THUMB_URL } from "$env/static/public";
-import type { TmdbGenre, TmdbMovieDetailResponse, TmdbMovieDetail } from "$lib/types/tmdb";
-import { Match, type GuessResponse } from "$lib/types/guess";
+import type { Movie, GameSessionResponse, GameSessionStatus } from "$lib/types/supabasetables";
+import { dailyMoviesTable, guessTable, gamesSessionTable } from "$lib/types/supabasetables";
 import { generateGuessResponse } from "$lib/utils/gameLogic";
-
-
 
 async function addGuessToDatabase(
   guessedMovie: Movie,
@@ -181,13 +175,13 @@ async function addGuessToDatabase(
   return gameSession;
 }
 
-export const POST: RequestHandler = async ({ url, request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
     const today = new Date().toISOString().split('T')[0]; 
     const { guessedMovieId } = await request.json();
 
     // get today's movie
     console.log(`guessed movie ${guessedMovieId}`);
-    const { data, error } = await supabaseAdmin
+    const { data } = await supabaseAdmin
         .from(dailyMoviesTable)
         .select(`
             play_date,

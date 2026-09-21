@@ -6,7 +6,7 @@ import type { GuessResponse } from '$lib/types/guess';
 
 export const load: PageServerLoad = async ({ locals }) => {
     // 1. Get user session
-    const { user, session} = await locals.safeGetSession();
+    const { user } = await locals.safeGetSession();
     // If no user, they haven't guessed yet, return empty
     if (!user) {
         console.log('no user, returning []');

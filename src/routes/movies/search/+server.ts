@@ -1,4 +1,4 @@
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from "./$types";
 import { PUBLIC_TMDB_THUMB_URL } from '$env/static/public';
 import type { SearchResult, SearchResponse } from '$lib/types/search';
@@ -13,7 +13,7 @@ export type { SearchResult, SearchResponse };
  * @param locals 
  * @returns SearchResults if found, in JSON format. Otherwise empty array. 
  */
-export const GET: RequestHandler = async ({ url, locals }) => {
+export const GET: RequestHandler = async ({ url }) => {
     let titleToSearchFor = url.searchParams.get('title');
 
     console.log(`Searching for ${titleToSearchFor}`);
