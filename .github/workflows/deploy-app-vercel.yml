@@ -1,9 +1,8 @@
 name: Deploy to Vercel
 on:
   push:
-    branches: [main]
-  pull_request:
-    types: [closed]
+    branches:
+      - main
 
 permissions: 
   contents: read 
@@ -13,6 +12,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: dev
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
       - name: Checkout
@@ -28,9 +28,6 @@ jobs:
             PUBLIC_SUPABASE_URL=${{ secrets.PUBLIC_SUPABASE_URL }}
             PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
             SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-            PUBLIC_TMDB_THUMB_URL=${{ vars.PUBLIC_TMDB_THUMB_URL }}
-            TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
-            TMDB_ACCESS_TOKEN=${{ secrets.TMDB_ACCESS_TOKEN }}
-            TMDB_BASE_URL=${{ vars.TMDB_BASE_URL }}
-            PUBLIC_SENTRY_DSN=${{ vars.PUBLIC_SENTRY_DSN }}
+            PUBLIC_TMDB_THUMB_URL=https://image.tmdb.org/t/p/w92
+            PUBLIC_SENTRY_DSN=https://4f52ba357f3b76ff2c52760047ab1065@o4512073687367680.ingest.de.sentry.io/4512086482813008
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
