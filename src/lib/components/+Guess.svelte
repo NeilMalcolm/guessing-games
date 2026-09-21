@@ -3,11 +3,12 @@
 
     let {
          guess, 
+         index,
          ...props 
     } 
     : {
-         guess: 
-         GuessResponse 
+         guess: GuessResponse,
+         index: number 
     } = $props();
 
     function getBadgeClassForMatch(match: Match) : string {
@@ -39,25 +40,45 @@
         </div>
 
         <div class="flex flex-wrap gap-2 items-center text-sm">
-            <div class={getBadgeClassForMatch(guess.yearResult.match)} title="Release Year">
-                {guess.yearResult.value} {getArrowForMatch(guess.yearResult.match)}
+            <div>
+                <div class="uppercase text-xs opacity-60 mb-1">
+                    YEAR
+                </div>
+                <div class={getBadgeClassForMatch(guess.yearResult.match)} title="Release Year">
+                    {guess.yearResult.value} {getArrowForMatch(guess.yearResult.match)}
+                </div>
             </div>
 
             {#if guess.boxOfficeResult}
-                <div class={getBadgeClassForMatch(guess.boxOfficeResult.match)} title="Box Office Revenue">
-                    Box Office: {guess.boxOfficeResult.value} {getArrowForMatch(guess.boxOfficeResult.match)}
+                <div>
+                    <div class="uppercase text-xs opacity-60 mb-1">
+                        Box Office
+                    </div>
+                    <div class={getBadgeClassForMatch(guess.boxOfficeResult.match)} title="Box Office Revenue">
+                        {guess.boxOfficeResult.value} {getArrowForMatch(guess.boxOfficeResult.match)}
+                    </div>
                 </div>
             {/if}
 
             {#if guess.ratingResult}
-                <div class={getBadgeClassForMatch(guess.ratingResult.match)} title="Rating Score">
-                    Rating: {guess.ratingResult.value} {getArrowForMatch(guess.ratingResult.match)}
+                <div>
+                    <div class="uppercase text-xs opacity-60 mb-1">
+                        Rating
+                    </div>
+                    <div class={getBadgeClassForMatch(guess.ratingResult.match)} title="Rating Score">
+                        {guess.ratingResult.value} {getArrowForMatch(guess.ratingResult.match)}
+                    </div>
                 </div>
             {/if}
 
             {#if guess.ageRatingResult}
-                <div class={getBadgeClassForMatch(guess.ageRatingResult.match)} title="Age Rating / Certification">
-                    Cert: {guess.ageRatingResult.value} {getArrowForMatch(guess.ageRatingResult.match)}
+                <div>
+                    <div class="uppercase text-xs opacity-60 mb-1">
+                        Certification
+                    </div>
+                    <div class={getBadgeClassForMatch(guess.ageRatingResult.match)} title="Age Rating / Certification">
+                        {guess.ageRatingResult.value} {getArrowForMatch(guess.ageRatingResult.match)}
+                    </div>
                 </div>
             {/if}
         </div>
@@ -65,7 +86,9 @@
         {#if guess.genresResult && guess.genresResult.length > 0}
             <div class="flex flex-wrap gap-1 items-center" title="Genres">
                 {#each guess.genresResult as genreResult}
-                    <span class={`${getBadgeClassForMatch(genreResult.match)} badge-sm`}>{genreResult.value}</span>
+                    <span class={`${getBadgeClassForMatch(genreResult.match)} badge-sm`}>
+                        {genreResult.value}
+                    </span>
                 {/each}
             </div>
         {/if}

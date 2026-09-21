@@ -95,9 +95,9 @@
             </div>
             <div class="mt-5">
                 <ul>
-                    {#each guesses as guess}
+                    {#each guesses as guess, index}
                     <li>
-                        <Guess {guess}/>
+                        <Guess {guess} {index}/>
                     </li>
                     {/each}
                 </ul>

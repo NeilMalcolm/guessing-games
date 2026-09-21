@@ -1,59 +1,17 @@
 import type { RequestHandler } from "./$types";
 import { supabaseAdmin } from "$lib/supabaseAdmin";
-import { tmdb } from "$lib/tmdbClient";
 import { json, error as jsonError } from "@sveltejs/kit";
-import type { DailyMovieWithDetails, Movie, GameSession, GameSessionResponse, GameSessionStatus, Guess } from "$lib/types/supabasetables";
-import { dailyMoviesTable, guessTable, gamesSessionTable, moviesTable } from "$lib/types/supabasetables";
-import { PUBLIC_TMDB_THUMB_URL } from "$env/static/public";
-import type { TmdbGenre, TmdbMovieDetailResponse, TmdbMovieDetail } from "$lib/types/tmdb";
-import { Match, type GuessResponse } from "$lib/types/guess";
+import type { Movie, GameSessionResponse, GameSessionStatus } from "$lib/types/supabasetables";
+import { dailyMoviesTable, guessTable, gamesSessionTable } from "$lib/types/supabasetables";
 import { generateGuessResponse } from "$lib/utils/gameLogic";
 
-const AGE_MAPPING: Record<string, Record<string, number>> = {
-  GB: { 'U': 0, 'PG': 8, '12': 12, '12A': 12, '15': 15, '18': 18, 'R18': 18 },
-  US: { 'G': 0, 'PG': 8, 'PG-13': 13, 'R': 17, 'NC-17': 18, 'NR': 0 },
-  DE: { '0': 0, '6': 6, '12': 12, '16': 16, '18': 18 }
-};
-
-function mapTmdbToMovie(guessedMovie: TmdbMovieDetail): Movie {
-  const guessAge = extractAgeRating(guessedMovie.release_dates?.results);
-  console.log("guessAge");
-  console.log(guessAge);
-  const guessMovieYear = guessedMovie.release_date 
-    ? new Date(guessedMovie.release_date).getFullYear() 
-    : null;
-
-  return {
-    id: guessedMovie.id,
-    title: guessedMovie.title,
-    release_year: guessMovieYear,
-    poster_path: guessedMovie.poster_path ?? null,
-    genres: (guessedMovie.genres ?? []).map((g: TmdbGenre) => g.name),
-    director: guessedMovie.credits?.crew?.find((c) => c.job === 'Director')?.name ?? null,
-    popularity: guessedMovie.popularity ?? null,
-    cast_members: (guessedMovie.credits?.cast ?? []).map((c) => ({
-      id: c.id,
-      name: c.name,
-      character: c.character,
-      order: c.order,
-      profile_path: c.profile_path ?? null
-    })),
-    box_office: guessedMovie.revenue ?? null,
-    rating: guessedMovie.vote_average ?? null,
-    vote_count: guessedMovie.vote_count ?? null,
-    min_age: guessAge.minAge,
-    certifications: guessAge.certs,
-    cached_at: new Date().toISOString()
-  };
-}
-
 async function addGuessToDatabase(
-  guessedMovie: TmdbMovieDetailResponse, 
+  guessedMovie: Movie,
   targetMovie: Movie, 
-  locals: App.Locals
+  locals: any
 ): Promise<GameSessionResponse> { 
 
-  if (!('id' in guessedMovie)) {
+  if (!guessedMovie || !guessedMovie.id) {
     throw jsonError(400, "Invalid movie details");
   }
 
@@ -109,7 +67,7 @@ async function addGuessToDatabase(
       `)
     .eq('user_id', user.id)
     .eq('target_movie_id', targetMovie.id)
-    .maybeSingle<GameSessionResponse>();
+    .maybeSingle();
 
   if (error) {
     console.error("Error fetching game session:", error);
@@ -136,7 +94,7 @@ async function addGuessToDatabase(
         created_at,
         updated_at
       `)
-      .single<GameSession>();
+      .single();
 
     if (createError || !newSession) {
       console.error("Failed to create game session:", createError);
@@ -147,6 +105,10 @@ async function addGuessToDatabase(
       ...newSession,
       guesses: []
     };
+  }
+
+  if (!gameSession) {
+    throw jsonError(500, "Game session is null after initialization");
   }
 
   // 2. check if we've already guessed this,
@@ -166,12 +128,6 @@ async function addGuessToDatabase(
     throw jsonError(400, "Movie has already been guessed in this session");
   }
 
-  const movieToSave = mapTmdbToMovie(guessedMovie as TmdbMovieDetail);
-
-  await supabaseAdmin
-    .from(moviesTable)
-    .upsert(movieToSave, { onConflict: 'id' });
-
   // add guess to guess table for this game session
   const nextGuessNumber = (gameSession.guesses ?? []).length + 1;
   const isCorrect = guessedMovie.id === targetMovie.id;
@@ -186,7 +142,7 @@ async function addGuessToDatabase(
       is_correct: isCorrect
     })
     .select()
-    .single<Guess>();
+    .single();
 
   if (saveGuessError || !newGuess) {
     console.error("Failed to save guess:", saveGuessError);
@@ -219,13 +175,13 @@ async function addGuessToDatabase(
   return gameSession;
 }
 
-export const POST: RequestHandler = async ({ url, request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
     const today = new Date().toISOString().split('T')[0]; 
     const { guessedMovieId } = await request.json();
 
     // get today's movie
     console.log(`guessed movie ${guessedMovieId}`);
-    const { data, error } = await supabaseAdmin
+    const { data } = await supabaseAdmin
         .from(dailyMoviesTable)
         .select(`
             play_date,
@@ -246,19 +202,22 @@ export const POST: RequestHandler = async ({ url, request, locals }) => {
             )
         `)
         .eq('play_date', today)
-        .single<DailyMovieWithDetails>();
+        .single();
 
-    const dailyMovie: Movie | undefined = data?.movie;
+    const dailyMovie = data?.movie as unknown as Movie | undefined;
         
     if (!dailyMovie?.id) {
       console.log("return empty");
       return json([]);
     }
 
-    let guessMovieDetails = await tmdb.getMovieDetails(guessedMovieId);
+    const { data: guessMovieDetails, error: guessMovieError } = await supabaseAdmin
+      .from('movies')
+      .select('*')
+      .eq('id', guessedMovieId)
+      .single();
 
-    console.log(`${guessMovieDetails.ok}`);
-    if (!guessMovieDetails.ok) {
+    if (guessMovieError || !guessMovieDetails) {
       console.log("return 500");
       return jsonError(500, "No value back for id");
     }
@@ -266,64 +225,8 @@ export const POST: RequestHandler = async ({ url, request, locals }) => {
     const gameSession = await addGuessToDatabase(guessMovieDetails, dailyMovie, locals);
     const isCorrect = guessMovieDetails.id === dailyMovie.id;
 
-    const guessMovieMapped = mapTmdbToMovie(guessMovieDetails as TmdbMovieDetail);
-    const response = generateGuessResponse(guessMovieMapped, dailyMovie, isCorrect, gameSession.status);
+    const response = generateGuessResponse(guessMovieDetails, dailyMovie, isCorrect, gameSession.status);
 
     return json(response);
 };
 
-function formatCurrency(amount: number): string {
-  if (!amount || amount === 0) return "$0";
-  if (amount >= 1_000_000_000) {
-    return `$${(amount / 1_000_000_000).toFixed(2).replace(/\.?0+$/, "")}B`;
-  }
-  if (amount >= 1_000_000) {
-    return `$${(amount / 1_000_000).toFixed(1).replace(/\.?0+$/, "")}M`;
-  }
-  if (amount >= 1_000) {
-    return `$${(amount / 1_000).toFixed(0)}K`;
-  }
-  return `$${amount}`;
-}
-
-function extractAgeRating(releaseDatesResults?: { iso_3166_1: string; release_dates: { certification: string }[] }[]): { certLabel: string; minAge: number | null; certs: Record<string, string> } {
-  if (!releaseDatesResults || releaseDatesResults.length === 0) {
-    return { certLabel: "N/A", minAge: null, certs: {} };
-  }
-
-  const certs: Record<string, string> = {};
-  for (const r of releaseDatesResults) {
-    const cert = r.release_dates.find(d => d.certification?.trim())?.certification;
-    if (cert) certs[r.iso_3166_1] = cert;
-  }
-
-  // Preference: GB, then US, then DE, or first available
-  const certLabel = certs["GB"] ?? certs["US"] ?? certs["DE"] ?? Object.values(certs)[0] ?? "N/A";
-  let minAge: number | null = null;
-
-  if (certs["GB"] && AGE_MAPPING.GB[certs["GB"]] !== undefined) {
-    minAge = AGE_MAPPING.GB[certs["GB"]];
-  } else if (certs["US"] && AGE_MAPPING.US[certs["US"]] !== undefined) {
-    minAge = AGE_MAPPING.US[certs["US"]];
-  } else if (certs["DE"] && AGE_MAPPING.DE[certs["DE"]] !== undefined) {
-    minAge = AGE_MAPPING.DE[certs["DE"]];
-  }
-
-  return { certLabel, minAge, certs };
-}
-
-function getGenreMatch(genre: string, genres: string[]): Match {
-  return (genres ?? []).includes(genre) ? Match.Exact : Match.None;
-}
-
-function getNumberMatch(guess: number, target: number, threshold: number): Match {
-  if (guess == target) return Match.Exact;
-
-  let isClose = Math.abs(guess - target) <= threshold;
-
-  if (guess > target) {
-    return isClose ? Match.LowerClose : Match.Lower;
-  }
-
-  return isClose ? Match.HigherClose : Match.Higher;
-}
