@@ -34,9 +34,12 @@ export const GET: RequestHandler = async ({ url }) => {
     }
 
     console.log(movies);
+    // Group and check for duplicate titles
+    const formattedResults = formatTitlesWithYearForDuplicates(movies || []);
+
     // return results to front-end 
     let result = {
-        results: movies?.map(movie => getSearchResultFromDbMovie(movie)),
+        results: formattedResults,
         ok: true
     };
 
@@ -44,15 +47,31 @@ export const GET: RequestHandler = async ({ url }) => {
 }
 
 /**
+ * Checks for duplicate titles and appends the release year to them.
  * Converts DB Movie to a SearchResult.
- * @param movie 
- * @returns The SearchResult.
+ * @param movies array of DB movies
+ * @returns Array of SearchResult
  */
-function getSearchResultFromDbMovie(movie: any) : SearchResult { 
-    return {
-        id: movie.id,
-        title: movie.title,
-        releaseDate: movie.release_year ? `${movie.release_year}-01-01` : "",
-        imagePath: movie.poster_path ? `${PUBLIC_TMDB_THUMB_URL}${movie.poster_path}` : ""
+function formatTitlesWithYearForDuplicates(movies: any[]): SearchResult[] {
+    const titleCounts = new Map<string, number>();
+    for (const movie of movies) {
+        const titleLower = movie.title.toLowerCase();
+        titleCounts.set(titleLower, (titleCounts.get(titleLower) || 0) + 1);
     }
+
+    return movies.map(movie => {
+        const titleLower = movie.title.toLowerCase();
+        const hasDuplicate = (titleCounts.get(titleLower) || 0) > 1;
+        
+        let finalTitle = movie.title;
+        if (hasDuplicate && movie.release_year) {
+            finalTitle = `${movie.title} (${movie.release_year})`;
+        }
+
+        return {
+            id: movie.id,
+            title: finalTitle,
+            imagePath: movie.poster_path ? `${PUBLIC_TMDB_THUMB_URL}${movie.poster_path}` : ""
+        };
+    });
 }
