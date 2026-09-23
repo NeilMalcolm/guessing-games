@@ -7,6 +7,5 @@ export interface SearchResponse {
 export interface SearchResult {
     id: number,
     title: string,
-    releaseDate: string,
     imagePath: string | null
 }

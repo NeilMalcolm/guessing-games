@@ -23,6 +23,5 @@
     </div> 
     <div>     
         <div class="text-lg font-semibold opacity-60">{searchResult.title}</div>
-        <div class="text-md opacity-45">{new Date(searchResult.releaseDate).getFullYear()}</div>
     </div>
 </button>
