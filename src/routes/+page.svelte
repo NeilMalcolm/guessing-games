@@ -97,7 +97,7 @@
                 <ul>
                     {#each guesses as guess, index}
                     <li>
-                        <Guess {guess} {index}/>
+                        <Guess {guess} index={guesses.length - index}/>
                     </li>
                     {/each}
                 </ul>
