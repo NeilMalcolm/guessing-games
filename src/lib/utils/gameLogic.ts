@@ -55,17 +55,25 @@ export function generateGuessResponse(
   const guessScore = rawGuessRating > 10 ? Math.round(rawGuessRating) : Math.round(rawGuessRating * 10);
   const targetScore = rawTargetRating > 10 ? Math.round(rawTargetRating) : Math.round(rawTargetRating * 10);
 
-  // 4. Cast Members (top 6 actors)
+  // 4. director matches
+  const directorResult: any = {
+    value: formatName(guessMovie.director),
+    image: `${PUBLIC_TMDB_THUMB_URL}${guessMovie.director_profile_path}`,
+    match: targetMovie.director === guessMovie.director ? Match.Exact : Match.None
+  };
+
+  // 5. Cast Members (top 6 actors)
   const targetCastNames = (targetMovie.cast_members ?? []).map(c => c.name.toLowerCase());
   const targetCastIds = new Set((targetMovie.cast_members ?? []).map(c => c.id));
   const castMembersResult = (guessMovie.cast_members ?? []).slice(0, 6).map(cast => ({
-    value: cast.name,
+    value: formatName(cast.name),
+    image: `${PUBLIC_TMDB_THUMB_URL}${cast.profile_path}`,
     match: (targetCastIds.has(cast.id) || targetCastNames.includes(cast.name.toLowerCase()))
       ? Match.Exact
       : Match.None
   }));
 
-  // 5. Age Rating
+  // 6. Age Rating
   const guessCertLabel = getPreferredCertLabel(guessMovie.certifications);
   const guessMinAge = guessMovie.min_age;
   const targetMinAge = targetMovie.min_age;
@@ -97,6 +105,7 @@ export function generateGuessResponse(
       value: guessScore > 0 ? `${guessScore}/100` : "N/A",
       match: getNumberMatch(guessScore, targetScore, 5)
     },
+    directorResult: directorResult,
     castMembersResult,
     ageRatingResult: {
       value: guessCertLabel,
@@ -106,3 +115,20 @@ export function generateGuessResponse(
     status
   };
 }
+
+const formatName = (fullName: string | null): string => {
+  // Split on one or more spaces to handle accidental double spaces
+
+  if (!fullName) 
+  {
+    return "";
+  }
+
+  const [first, ...rest] = fullName.trim().split(/\s+/);
+  
+  // Return early if there's no last name
+  if (rest.length === 0) return first;
+
+  // Combine the first initial with the remaining parts
+  return `${first[0].toUpperCase()}. ${rest.join(' ')}`;
+};

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Match, type GuessResponse } from "$lib/types/guess";
+	import { getArrowForMatch, getBadgeClassForMatch, type GuessResponse } from "$lib/types/guess";
+	import Profile from "./+Profile.svelte";
 
     let {
          guess, 
@@ -11,21 +12,6 @@
          index: number 
     } = $props();
 
-    function getBadgeClassForMatch(match: Match) : string {
-        if (match === Match.Exact) return "badge badge-success";
-        if (match === Match.HigherClose || match === Match.LowerClose) return "badge badge-warning";
-
-        return "badge badge-neutral";
-    }
-    
-    function getArrowForMatch(match: Match) : string {
-        if (match === Match.Exact) return "";
-        if (match === Match.HigherClose || match === Match.Higher) return "↑";
-        if (match === Match.LowerClose || match === Match.Lower) return "↓";
-
-        return "";
-    }
-    
 </script>
 <div class="card card-side bg-base-200 shadow-md mb-3 overflow-hidden">
     <!-- Index section taking full height -->
@@ -99,15 +85,28 @@
                     </div>
                 {/if}
             </div>
-
-            {#if guess.castMembersResult && guess.castMembersResult.length > 0}
-                <div class="text-xs uppercase opacity-70 mr-1 mt-1">Cast</div>
-                <div class="flex flex-wrap gap-1 items-center" title="Cast">
-                    {#each guess.castMembersResult as castResult}
-                        <span class={`${getBadgeClassForMatch(castResult.match)} badge-sm`}>{castResult.value}</span>
-                    {/each}
-                </div>
-            {/if}
+            
+            <div class="flex flex-wrap items-center">
+                {#if guess.directorResult}
+                    <div class="flex flex-col gap-3">
+                        <div class="text-xs uppercase opacity-70 mr-1 mt-1">Director</div>
+                        <div class="flex flex-wrap gap-1 items-center" title="Director">
+                            <Profile castMember={guess.directorResult} />
+                        </div>
+                    </div>
+                {/if}
+                <div class="mt-10 mb-5 divider divider-horizontal"></div>
+                {#if guess.castMembersResult && guess.castMembersResult.length > 0}
+                    <div class="flex flex-col gap-3">
+                        <div class="text-xs uppercase opacity-70 mr-1 mt-1">Cast</div>
+                        <div class="flex flex-wrap gap-3 items-center" title="Cast">
+                            {#each guess.castMembersResult as castResult}
+                                <Profile castMember={castResult} />
+                            {/each}
+                        </div>
+                    </div>
+                {/if}
+            </div>
         </div>
     </div>
 </div>
