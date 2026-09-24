@@ -7,7 +7,8 @@ export interface GuessResponse {
   genresResult: PropertyResult[];
   boxOfficeResult: PropertyResult;
   ratingResult: PropertyResult;
-  castMembersResult: PropertyResult[];
+  directorResult: CastPropertyResult;
+  castMembersResult: CastPropertyResult[];
   ageRatingResult: PropertyResult;
   isCorrect: boolean;
   status: GameSessionStatus;
@@ -18,6 +19,10 @@ export interface PropertyResult {
   match: Match,
 }
 
+export interface CastPropertyResult extends PropertyResult { 
+  image: string
+}
+
 export enum Match {
   None,
   Lower,
@@ -25,4 +30,20 @@ export enum Match {
   Exact,
   HigherClose,
   Higher
+}
+
+
+export function getBadgeClassForMatch(match: Match) : string {
+    if (match === Match.Exact) return "badge badge-success";
+    if (match === Match.HigherClose || match === Match.LowerClose) return "badge badge-warning";
+
+    return "badge badge-neutral";
+}
+
+export function getArrowForMatch(match: Match) : string {
+    if (match === Match.Exact) return "";
+    if (match === Match.HigherClose || match === Match.Higher) return "↑";
+    if (match === Match.LowerClose || match === Match.Lower) return "↓";
+
+    return "";
 }

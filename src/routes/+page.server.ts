@@ -69,6 +69,7 @@ export const load: PageServerLoad = async ({ locals }) => {
                   poster_path,
                   genres,
                   director,
+                  director_profile_path,
                   popularity,
                   cast_members,
                   box_office,
