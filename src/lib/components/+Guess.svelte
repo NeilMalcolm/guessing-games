@@ -29,14 +29,14 @@
 </script>
 <div class="card card-side bg-base-200 shadow-md mb-3 overflow-hidden">
     <!-- Index section taking full height -->
-    <div class="flex flex-col items-center justify-center bg-base-300 w-20 flex-shrink-0">
-        <span class="text-2xl font-bold leading-none opacity-65">#{index}</span>
+    <div class="flex flex-col items-center justify-center bg-base-300 w-10 flex-shrink-0">
+        <span class="text-xl leading-none opacity-65">#{index}</span>
     </div>
 
     <!-- Main content area -->
     <div class="flex flex-1 p-3 gap-4 items-center min-w-0">
         {#if guess.image}
-            <figure class="w-16 h-24 flex-shrink-0 overflow-hidden rounded-md">
+            <figure class="w-22 h-32 flex-shrink-0 overflow-hidden rounded-md">
                 <img src={guess.image} alt={`Poster for ${guess.title}`} class="w-full h-full object-cover" />
             </figure>
         {/if}

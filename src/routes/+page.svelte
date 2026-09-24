@@ -46,6 +46,8 @@
         onClear();
         
         await makeGuess(guess);
+        // ensure the search results clear, even if a debounce happened.
+        onClear();
     }
 
     /**
@@ -79,7 +81,9 @@
                                 {onSearch}
                                 {onClear}
                                 minCharacters={2} />
-                    <button class="btn btn-outline btn-accent">Give Up</button>
+                    <button class="btn btn-outline btn-warning">
+                        Give Up
+                    </button>
                 </div>
 
                 {#if searchResults}
