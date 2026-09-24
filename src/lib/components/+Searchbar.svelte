@@ -2,6 +2,7 @@
     import { debounce } from '$lib/utils/debounce';
 
     const defaultMinCharacterForSearch = 3;
+    let searchBar: HTMLInputElement;
 
     let 
     { 
@@ -37,6 +38,15 @@
         onSearch(value);
     }, debounceTime);
 
+    function onBlur(): void { 
+        if (!searchBar) 
+        {
+             return;
+        }
+
+        searchBar
+    }
+
 
 </script>
 <label class="input" 
@@ -55,6 +65,8 @@
         type="search"
         class="grow"
         bind:value={value}
+        bind:this={searchBar}
         oninput={debouncedSearch}
+        onblur={onBlur}
         placeholder={placeholder}>
 </label>
