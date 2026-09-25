@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getArrowForMatch, getBadgeClassForMatch, type GuessResponse } from "$lib/types/guess";
+	import DataMatch from "./+DataMatch.svelte";
 	import Profile from "./+Profile.svelte";
 
     let {
@@ -13,83 +14,65 @@
     } = $props();
 
 </script>
-<div class="card card-side bg-base-200 shadow-md mb-3 overflow-hidden">
-    <!-- Index section taking full height -->
-    <div class="flex flex-col items-center justify-center bg-base-300 w-10 flex-shrink-0">
-        <span class="text-xl leading-none opacity-65">#{index}</span>
-    </div>
-
+<div class="card bg-base-300 shadow-md mb-3 overflow-hidden">
     <!-- Main content area -->
-    <div class="flex flex-1 p-3 gap-4 items-center min-w-0">
-        {#if guess.image}
-            <figure class="w-22 h-32 flex-shrink-0 overflow-hidden rounded-md">
-                <img src={guess.image} alt={`Poster for ${guess.title}`} class="w-full h-full object-cover" />
-            </figure>
-        {/if}
+     
+    <div>
 
-        
-        <div class="flex-1 flex flex-col gap-2 min-w-0">
-            <div class="flex items-center justify-between">
-                <h3 class="font-bold text-lg truncate">{guess.title}</h3>
-            </div>
-            {#if guess.genresResult && guess.genresResult.length > 0}
-                <div class="flex flex-wrap gap-1 items-center" title="Genres">
-                    {#each guess.genresResult as genreResult}
-                        <span class={`${getBadgeClassForMatch(genreResult.match)} badge-sm`}>
-                            {genreResult.value}
-                        </span>
-                    {/each}
-                </div>
+        <div class="flex flex-1 p-5 gap-4 justify-stretch shrink-0">
+            {#if guess.image}
+                <figure class="w-34 self-stretch shrink-0 overflow-hidden rounded-md">
+                    <img src={guess.image} alt={`Poster for ${guess.title}`} class="w-full h-full object-cover" />
+                </figure>
             {/if}
 
-            <div class="flex flex-wrap gap-2 items-center text-sm">
-                <div>
-                    <div class="uppercase text-xs opacity-60 mb-1">
-                        YEAR
-                    </div>
-                    <div class={getBadgeClassForMatch(guess.yearResult.match)} title="Release Year">
-                        {guess.yearResult.value} {getArrowForMatch(guess.yearResult.match)}
-                    </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center mb-2">
+                    <h3 class="font-bold text-2xl truncate">{guess.title}</h3>
                 </div>
-
-                {#if guess.boxOfficeResult}
-                    <div>
-                        <div class="uppercase text-xs opacity-60 mb-1">
-                            Box Office
-                        </div>
-                        <div class={getBadgeClassForMatch(guess.boxOfficeResult.match)} title="Box Office Revenue">
-                            {guess.boxOfficeResult.value} {getArrowForMatch(guess.boxOfficeResult.match)}
-                        </div>
+                {#if guess.genresResult && guess.genresResult.length > 0}
+                    <div class="flex flex-wrap gap-1 items-center  mb-3" title="Genres">
+                        {#each guess.genresResult as genreResult}
+                            <span class={`${getBadgeClassForMatch(genreResult.match)} badge-s`}>
+                                {genreResult.value}
+                            </span>
+                        {/each}
                     </div>
                 {/if}
 
-                {#if guess.ratingResult}
-                    <div>
-                        <div class="uppercase text-xs opacity-60 mb-1">
-                            Rating
-                        </div>
-                        <div class={getBadgeClassForMatch(guess.ratingResult.match)} title="Rating Score">
-                            {guess.ratingResult.value} {getArrowForMatch(guess.ratingResult.match)}
-                        </div>
-                    </div>
-                {/if}
+                <div class="grid grid-cols-2 gap-2">
+                    {#if guess.yearResult}
+                        <DataMatch title="Year" 
+                                   propertyResult={guess.yearResult}/>
+                    {/if}
 
-                {#if guess.ageRatingResult}
-                    <div>
-                        <div class="uppercase text-xs opacity-60 mb-1">
-                            Certification
-                        </div>
-                        <div class={getBadgeClassForMatch(guess.ageRatingResult.match)} title="Age Rating / Certification">
-                            {guess.ageRatingResult.value} {getArrowForMatch(guess.ageRatingResult.match)}
-                        </div>
-                    </div>
-                {/if}
+                    {#if guess.boxOfficeResult}
+                        <DataMatch title="Box Office"
+                                   propertyResult={guess.boxOfficeResult}/>
+                    {/if}
+
+                    {#if guess.ratingResult}
+                        <DataMatch title="Rating" 
+                                   propertyResult={guess.ratingResult}/>
+                    {/if}
+
+                    {#if guess.ageRatingResult}
+                        <DataMatch title="Certification" 
+                                   propertyResult={guess.ageRatingResult} 
+                                   showArrow={false}/>
+                    {/if}
+                </div>
+                
             </div>
-            
-            <div class="flex flex-wrap items-center">
+        </div>
+
+        
+        <!-- <div class="flex-1 flex flex-col gap-2 min-w-0" title="Director and Cast"> -->
+         
+            <div class="flex items-start justify-center pl-3 pr-3 pb-5">
                 {#if guess.directorResult}
                     <div class="flex flex-col gap-3">
-                        <div class="text-xs uppercase opacity-70 mr-1 mt-1">Director</div>
+                        <div class="text-xs uppercase opacity-70 mt-1">Director</div>
                         <div class="flex flex-wrap gap-1 items-center" title="Director">
                             <Profile castMember={guess.directorResult} />
                         </div>
@@ -98,8 +81,8 @@
                 <div class="mt-10 mb-5 divider divider-horizontal"></div>
                 {#if guess.castMembersResult && guess.castMembersResult.length > 0}
                     <div class="flex flex-col gap-3">
-                        <div class="text-xs uppercase opacity-70 mr-1 mt-1">Cast</div>
-                        <div class="flex flex-wrap gap-3 items-center" title="Cast">
+                        <div class="text-xs uppercase opacity-70 mt-1">Cast</div>
+                        <div class="flex flex-wrap gap-2 items-center" title="Cast">
                             {#each guess.castMembersResult as castResult}
                                 <Profile castMember={castResult} />
                             {/each}
@@ -107,6 +90,5 @@
                     </div>
                 {/if}
             </div>
-        </div>
     </div>
 </div>

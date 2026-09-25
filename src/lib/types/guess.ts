@@ -47,3 +47,17 @@ export function getArrowForMatch(match: Match) : string {
 
     return "";
 }
+
+export function getTextColorForMatch(match: Match) : string {
+    if (match === Match.Exact) return "text-white";
+    if (match === Match.HigherClose || match === Match.LowerClose) return "text-orange-400";
+
+    return "text-white";
+}
+
+export function getBgForMatch(match: Match) : string {
+    if (match === Match.Exact) return "bg-success";
+    if (match === Match.HigherClose || match === Match.LowerClose) return "bg-warning";
+
+    return "bg-neutral";
+}
