@@ -1,11 +1,12 @@
 import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import { Match, type GuessResponse, type PropertyResult } from '$lib/types/guess';
+import { Match, type CastPropertyResult, type GuessResponse, type PropertyResult } from '$lib/types/guess';
 import Guess from './+Guess.svelte';
 import type { GameSessionStatus } from '$lib/types/supabasetables';
 
 describe('Welcome.svelte', () => {
+describe('+Guess.svelte', () => {
     it('renders guess content text correctly', async () => {
         render(Guess, { guess: getFullGuessResponse(), index: 0 });
 
@@ -17,16 +18,19 @@ describe('Welcome.svelte', () => {
         // We should see release year
         await expect
             .element(page.getByTitle('Release Year'))
+            .element(page.getByTitle('Year'))
             .toHaveTextContent('2026');
             
         // We should see rating
         await expect
             .element(page.getByTitle('Rating Score'))
+            .element(page.getByTitle('Rating'))
             .toHaveTextContent('78/100');
             
         // We should see age rating
         await expect
             .element(page.getByTitle('Age Rating / Certification'))
+            .element(page.getByTitle('Certification'))
             .toHaveTextContent('12A');
 
         // We should see genres show
@@ -43,28 +47,115 @@ describe('Welcome.svelte', () => {
     it('renders matched values correctly', async () => {
         render(Guess, { guess: getGuessResponseWithMatch(Match.Exact), index: 0 });
         await assertMatchFields('badge-success', '');
+        await assertMatchFields('bg-success', '');
     });
     
     it('renders high match values correctly', async () => {
         render(Guess, { guess: getGuessResponseWithMatch(Match.Higher), index: 1 });
         await assertMatchFields('badge-neutral', '↑');
+        await assertMatchFields('bg-neutral', '↑');
     });
     
     it('renders close-high match values correctly', async () => {
         render(Guess, { guess: getGuessResponseWithMatch(Match.HigherClose), index: 2 });
         await assertMatchFields('badge-warning', '↑');
+        await assertMatchFields('bg-warning', '↑');
     });
     
     it('renders low match values correctly', async () => {
         render(Guess, { guess: getGuessResponseWithMatch(Match.Lower), index: 3 });
         await assertMatchFields('badge-neutral', '↓');
+        await assertMatchFields('bg-neutral', '↓');
     });
     
     it('renders close-low match values correctly', async () => {
         render(Guess, { guess: getGuessResponseWithMatch(Match.LowerClose), index: 4 });
         await assertMatchFields('badge-warning', '↓');
+        await assertMatchFields('bg-warning', '↓');
     });
-    
+
+    describe('director and cast member results', () => {
+        it('renders director result with profile image and name', async () => {
+            render(Guess, { guess: getFullGuessResponse(), index: 0 });
+
+            const directorSection = page.getByTitle('Director');
+            await expect.element(directorSection).toBeInTheDocument();
+            await expect.element(directorSection.getByText('Danny Devito')).toBeInTheDocument();
+
+            const image = directorSection.getByAltText('Profile picture for Danny Devito');
+            await expect.element(image).toBeInTheDocument();
+            await expect.element(image).toHaveAttribute('src', 'http://example.com/image2.png');
+        });
+
+        it('renders all cast members with profile images and names', async () => {
+            render(Guess, { guess: getFullGuessResponse(), index: 0 });
+
+            const castSection = page.getByTitle('Cast');
+            await expect.element(castSection).toBeInTheDocument();
+
+            // First cast member
+            await expect.element(castSection.getByText('John Smith')).toBeInTheDocument();
+            const johnImg = castSection.getByAltText('Profile picture for John Smith');
+            await expect.element(johnImg).toBeInTheDocument();
+            await expect.element(johnImg).toHaveAttribute('src', 'http://example.com/image2.png');
+
+            // Second cast member
+            await expect.element(castSection.getByText('Jane Smith')).toBeInTheDocument();
+            const janeImg = castSection.getByAltText('Profile picture for Jane Smith');
+            await expect.element(janeImg).toBeInTheDocument();
+            await expect.element(janeImg).toHaveAttribute('src', 'http://example.com/image.png');
+        });
+
+        it('applies exact match highlight (ring-success and text-success) when match is Exact', async () => {
+            render(Guess, { guess: getGuessResponseWithMatch(Match.Exact), index: 0 });
+
+            const directorSection = page.getByTitle('Director');
+            const directorName = directorSection.getByText('Danny Devito');
+            await expect.element(directorName).toHaveClass('text-success');
+            const directorImg = directorSection.getByAltText('Profile picture for Danny Devito');
+            await expect.element(directorImg.element().parentElement).toHaveClass('ring-success');
+
+            const castSection = page.getByTitle('Cast');
+            const johnName = castSection.getByText('John Smith');
+            await expect.element(johnName).toHaveClass('text-success');
+            const johnImg = castSection.getByAltText('Profile picture for John Smith');
+            await expect.element(johnImg.element().parentElement).toHaveClass('ring-success');
+        });
+
+        it('does not apply exact match styling when match is not Exact', async () => {
+            render(Guess, { guess: getGuessResponseWithMatch(Match.None), index: 0 });
+
+            const directorSection = page.getByTitle('Director');
+            const directorName = directorSection.getByText('Danny Devito');
+            await expect.element(directorName).not.toHaveClass('text-success');
+            await expect.element(directorName).toHaveClass('opacity-90');
+            const directorImg = directorSection.getByAltText('Profile picture for Danny Devito');
+            await expect.element(directorImg.element().parentElement).not.toHaveClass('ring-success');
+
+            const castSection = page.getByTitle('Cast');
+            const johnName = castSection.getByText('John Smith');
+            await expect.element(johnName).not.toHaveClass('text-success');
+            await expect.element(johnName).toHaveClass('opacity-90');
+            const johnImg = castSection.getByAltText('Profile picture for John Smith');
+            await expect.element(johnImg.element().parentElement).not.toHaveClass('ring-success');
+        });
+
+        it('does not render director section when directorResult is not present', async () => {
+            const guess = getFullGuessResponse();
+            delete (guess as Partial<GuessResponse>).directorResult;
+            render(Guess, { guess, index: 0 });
+
+            await expect.element(page.getByTitle('Director')).not.toBeInTheDocument();
+        });
+
+        it('does not render cast section when castMembersResult is empty', async () => {
+            const guess = getFullGuessResponse();
+            guess.castMembersResult = [];
+            render(Guess, { guess, index: 0 });
+
+            await expect.element(page.getByTitle('Cast')).not.toBeInTheDocument();
+        });
+    });
 });
 
 async function assertMatchFields(expectedClass: string, arrow: string) {
@@ -73,6 +164,10 @@ async function assertMatchFields(expectedClass: string, arrow: string) {
         { title: 'Box Office Revenue', text: `$2.5M ${arrow}`.trim() },
         { title: 'Rating Score', text: `78/100 ${arrow}`.trim() },
         { title: 'Age Rating / Certification', text: `12A ${arrow}`.trim() }
+        { title: 'Year', text: `2026 ${arrow}`.trim() },
+        { title: 'Box Office', text: `$2.5M ${arrow}`.trim() },
+        { title: 'Rating', text: `78/100 ${arrow}`.trim() },
+        { title: 'Certification', text: '12A' }
     ];
 
     for (const { title, text } of expectations) {
@@ -112,13 +207,20 @@ function getGuessResponseWithMatch(match: Match): GuessResponse {
             value: '78/100',
             match
         },
+        {
+                value: 'Danny Devito',
+                image: "http://example.com/image2.png",
+                match
+        },
         [
             { 
                 value: 'John Smith',
+                image: "http://example.com/image2.png",
                 match
             },
             { 
                 value: 'Jane Smith',
+                image: "http://example.com/image.png",
                 match
             },
         ],
@@ -138,7 +240,8 @@ function getGuessResponse(
     genresResult: PropertyResult[],
     boxOfficeResult: PropertyResult,
     ratingResult: PropertyResult,
-    castMembersResult: PropertyResult[],
+    directorResult: CastPropertyResult,
+    castMembersResult: CastPropertyResult[],
     ageRatingResult: PropertyResult,
     isCorrect: boolean,
     status: GameSessionStatus
@@ -150,6 +253,7 @@ function getGuessResponse(
       genresResult: genresResult,
       boxOfficeResult: boxOfficeResult,
       ratingResult: ratingResult,
+      directorResult: directorResult,
       castMembersResult: castMembersResult,
       ageRatingResult: ageRatingResult,
       isCorrect: isCorrect,
