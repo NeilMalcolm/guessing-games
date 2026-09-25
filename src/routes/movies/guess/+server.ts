@@ -5,6 +5,61 @@ import type { Movie, GameSessionResponse, GameSessionStatus } from "$lib/types/s
 import { dailyMoviesTable, guessTable, gamesSessionTable } from "$lib/types/supabasetables";
 import { generateGuessResponse } from "$lib/utils/gameLogic";
 
+export const POST: RequestHandler = async ({ request, locals }) => {
+    const today = new Date().toISOString().split('T')[0]; 
+    const { guessedMovieId } = await request.json();
+
+    // get today's movie
+    console.log(`guessed movie ${guessedMovieId}`);
+    const { data } = await supabaseAdmin
+        .from(dailyMoviesTable)
+        .select(`
+            play_date,
+            custom_hints,
+            movie:movies (
+              id,
+              title,
+              release_year,
+              poster_path,
+              genres,
+              director,
+              popularity,
+              cast_members,
+              box_office,
+              rating,
+              min_age,
+              certifications
+            )
+        `)
+        .eq('play_date', today)
+        .single();
+
+    const dailyMovie = data?.movie as unknown as Movie | undefined;
+        
+    if (!dailyMovie?.id) {
+      console.log("return empty");
+      return json([]);
+    }
+
+    const { data: guessMovieDetails, error: guessMovieError } = await supabaseAdmin
+      .from('movies')
+      .select('*')
+      .eq('id', guessedMovieId)
+      .single();
+
+    if (guessMovieError || !guessMovieDetails) {
+      console.log("return 500");
+      return jsonError(500, "No value back for id");
+    }
+
+    const gameSession = await addGuessToDatabase(guessMovieDetails, dailyMovie, locals);
+    const isCorrect = guessMovieDetails.id === dailyMovie.id;
+
+    const response = generateGuessResponse(guessMovieDetails, dailyMovie, isCorrect, gameSession.status);
+
+    return json(response);
+};
+
 async function addGuessToDatabase(
   guessedMovie: Movie,
   targetMovie: Movie, 
@@ -174,59 +229,3 @@ async function addGuessToDatabase(
 
   return gameSession;
 }
-
-export const POST: RequestHandler = async ({ request, locals }) => {
-    const today = new Date().toISOString().split('T')[0]; 
-    const { guessedMovieId } = await request.json();
-
-    // get today's movie
-    console.log(`guessed movie ${guessedMovieId}`);
-    const { data } = await supabaseAdmin
-        .from(dailyMoviesTable)
-        .select(`
-            play_date,
-            custom_hints,
-            movie:movies (
-              id,
-              title,
-              release_year,
-              poster_path,
-              genres,
-              director,
-              popularity,
-              cast_members,
-              box_office,
-              rating,
-              min_age,
-              certifications
-            )
-        `)
-        .eq('play_date', today)
-        .single();
-
-    const dailyMovie = data?.movie as unknown as Movie | undefined;
-        
-    if (!dailyMovie?.id) {
-      console.log("return empty");
-      return json([]);
-    }
-
-    const { data: guessMovieDetails, error: guessMovieError } = await supabaseAdmin
-      .from('movies')
-      .select('*')
-      .eq('id', guessedMovieId)
-      .single();
-
-    if (guessMovieError || !guessMovieDetails) {
-      console.log("return 500");
-      return jsonError(500, "No value back for id");
-    }
-
-    const gameSession = await addGuessToDatabase(guessMovieDetails, dailyMovie, locals);
-    const isCorrect = guessMovieDetails.id === dailyMovie.id;
-
-    const response = generateGuessResponse(guessMovieDetails, dailyMovie, isCorrect, gameSession.status);
-
-    return json(response);
-};
-

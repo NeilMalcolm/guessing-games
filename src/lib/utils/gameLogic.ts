@@ -3,6 +3,8 @@ import type { Movie } from "$lib/types/supabasetables";
 import { PUBLIC_TMDB_THUMB_URL } from "$env/static/public";
 import type { GameSessionStatus } from "$lib/types/supabasetables";
 
+const CAST_MEMBER_DISPLAY_COUNT: number = 5;
+
 export function formatCurrency(amount: number | null): string {
   if (!amount || amount === 0) return "$0";
   if (amount >= 1_000_000_000) {
@@ -62,10 +64,10 @@ export function generateGuessResponse(
     match: targetMovie.director === guessMovie.director ? Match.Exact : Match.None
   };
 
-  // 5. Cast Members (top 6 actors)
+  // 5. Cast Members (top X actors)
   const targetCastNames = (targetMovie.cast_members ?? []).map(c => c.name.toLowerCase());
   const targetCastIds = new Set((targetMovie.cast_members ?? []).map(c => c.id));
-  const castMembersResult = (guessMovie.cast_members ?? []).slice(0, 6).map(cast => ({
+  const castMembersResult = (guessMovie.cast_members ?? []).slice(0, CAST_MEMBER_DISPLAY_COUNT).map(cast => ({
     value: formatName(cast.name),
     image: `${PUBLIC_TMDB_THUMB_URL}${cast.profile_path}`,
     match: (targetCastIds.has(cast.id) || targetCastNames.includes(cast.name.toLowerCase()))
