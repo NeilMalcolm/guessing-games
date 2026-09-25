@@ -5,7 +5,6 @@ import { Match, type CastPropertyResult, type GuessResponse, type PropertyResult
 import Guess from './+Guess.svelte';
 import type { GameSessionStatus } from '$lib/types/supabasetables';
 
-describe('Welcome.svelte', () => {
 describe('+Guess.svelte', () => {
     it('renders guess content text correctly', async () => {
         render(Guess, { guess: getFullGuessResponse(), index: 0 });
@@ -17,19 +16,16 @@ describe('+Guess.svelte', () => {
             
         // We should see release year
         await expect
-            .element(page.getByTitle('Release Year'))
             .element(page.getByTitle('Year'))
             .toHaveTextContent('2026');
             
         // We should see rating
         await expect
-            .element(page.getByTitle('Rating Score'))
             .element(page.getByTitle('Rating'))
             .toHaveTextContent('78/100');
             
         // We should see age rating
         await expect
-            .element(page.getByTitle('Age Rating / Certification'))
             .element(page.getByTitle('Certification'))
             .toHaveTextContent('12A');
 
@@ -46,31 +42,26 @@ describe('+Guess.svelte', () => {
     
     it('renders matched values correctly', async () => {
         render(Guess, { guess: getGuessResponseWithMatch(Match.Exact), index: 0 });
-        await assertMatchFields('badge-success', '');
         await assertMatchFields('bg-success', '');
     });
     
     it('renders high match values correctly', async () => {
         render(Guess, { guess: getGuessResponseWithMatch(Match.Higher), index: 1 });
-        await assertMatchFields('badge-neutral', '↑');
         await assertMatchFields('bg-neutral', '↑');
     });
     
     it('renders close-high match values correctly', async () => {
         render(Guess, { guess: getGuessResponseWithMatch(Match.HigherClose), index: 2 });
-        await assertMatchFields('badge-warning', '↑');
         await assertMatchFields('bg-warning', '↑');
     });
     
     it('renders low match values correctly', async () => {
         render(Guess, { guess: getGuessResponseWithMatch(Match.Lower), index: 3 });
-        await assertMatchFields('badge-neutral', '↓');
         await assertMatchFields('bg-neutral', '↓');
     });
     
     it('renders close-low match values correctly', async () => {
         render(Guess, { guess: getGuessResponseWithMatch(Match.LowerClose), index: 4 });
-        await assertMatchFields('badge-warning', '↓');
         await assertMatchFields('bg-warning', '↓');
     });
 
@@ -160,10 +151,6 @@ describe('+Guess.svelte', () => {
 
 async function assertMatchFields(expectedClass: string, arrow: string) {
     const expectations = [
-        { title: 'Release Year', text: `2026 ${arrow}`.trim() },
-        { title: 'Box Office Revenue', text: `$2.5M ${arrow}`.trim() },
-        { title: 'Rating Score', text: `78/100 ${arrow}`.trim() },
-        { title: 'Age Rating / Certification', text: `12A ${arrow}`.trim() }
         { title: 'Year', text: `2026 ${arrow}`.trim() },
         { title: 'Box Office', text: `$2.5M ${arrow}`.trim() },
         { title: 'Rating', text: `78/100 ${arrow}`.trim() },
