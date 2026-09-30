@@ -16,7 +16,7 @@
 
 </script>
 <div class={"flex flex-col items-center pt-2 pb-2 pl-9 pr-9 justify-center rounded-md " + (getBgForMatch(propertyResult.match))} title="{title}">
-    <div class={"uppercase text-xs opacity-20 text-neutral opacity-70 mb-1 " + (getTextColorForMatch(propertyResult.match))}>
+    <div class={"uppercase text-xs font-semibold opacity-60 text-neutral opacity-70 mb-1 " + (getTextColorForMatch(propertyResult.match))}>
         {title}
     </div>
     <div class={"text-xl text-neutral opacity-90 font-semibold " + (getTextColorForMatch(propertyResult.match))}>

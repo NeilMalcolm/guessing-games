@@ -3,85 +3,103 @@
 	import type { SearchResponse, SearchResult } from './movies/search/+server';
 	import SearchItem from '$lib/components/+SearchItem.svelte';
 	import Guess from '$lib/components/+Guess.svelte';
-	import type { GuessResponse } from '$lib/types/guess';
+	import type { GameSessionClientResponse, GuessResponse } from '$lib/types/guess';
 	import type { PageData } from './$types';
-    import { untrack } from 'svelte';
+	import { untrack } from 'svelte';
 
-    let { data }: { data: PageData } = $props();
+	let { data }: { data: PageData } = $props();
 
-    let searchQuery = $state('')
-    let searchResults: SearchResponse | null = $state(null);
-    
-    const guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
+	let searchQuery = $state('');
+	let searchResults: SearchResponse | null = $state(null);
+	let gameStatus = $derived(data.gameStatus);
+	let isGameFinished: boolean = $derived(gameStatus !== 'in_progress');
+	
+	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
 
-    /**
-     * Handles search from the searchbar.
-     * @param searchTerm
-     */
-    async function onSearch(searchTerm: String) {
+	$effect(() => {
+		guesses = data.guesses ?? [];
+		gameStatus = data.gameStatus ?? 'in_progress';
+	});
+
+	/**
+	 * Handles search from the searchbar.
+	 * @param searchTerm
+	 */
+	async function onSearch(searchTerm: String) {
 		const response = await fetch(`/movies/search?title=${searchTerm}`);
 
-        if (!response.ok)
-        {
-            throw new Error("Failed to get search data");    
-        }
+		if (!response.ok) {
+			throw new Error("Failed to get search data");	
+		}
 
-        let json = await response.json();
-        searchResults = json as SearchResponse;
-    }
+		let json = await response.json();
+		searchResults = json as SearchResponse;
+	}
 
-    /**
-     * Invoked when clearing the text from the search bar.
-     */
-    function onClear() {
-        searchQuery = '';
-        searchResults = null;
-    }
+	/**
+	 * Invoked when clearing the text from the search bar.
+	 */
+	function onClear() {
+		searchQuery = '';
+		searchResults = null;
+	}
 
-    /**
-     * Handles the result.
-     * @param guess the search result being guessed.
-     */
+	/**
+	 * Handles the result.
+	 * @param guess the search result being guessed.
+	 */
 	async function onResultClicked(guess: SearchResult) {
-        onClear();
-        
-        await makeGuess(guess);
-        // ensure the search results clear, even if a debounce happened.
-        onClear();
-    }
+		onClear();
+		
+		await makeGuess(guess);
+		// ensure the search results clear, even if a debounce happened.
+		onClear();
+	}
 
-    /**
-     * Makes a guess from the given search result.
-     * @param guess
-     */
+	/**
+	 * Makes a guess from the given search result.
+	 * @param guess
+	 */
 	async function makeGuess(guess: SearchResult) {
-        const response = await fetch('/movies/guess', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                guessedMovieId: guess.id
-            })
-        });
+		if (isGameFinished) {
+            console.log('game is finished');
+			return;
+		}
 
-        let guessRseponse: GuessResponse = await response.json() as GuessResponse;
-        
-        guesses.unshift(guessRseponse);
-    };
+		const response = await fetch('/movies/guess', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				guessedMovieId: guess.id
+			})
+		});
+
+		if (!response.ok) {
+			console.error('Failed to submit guess');
+			return;
+		}
+
+		const sessionData: GameSessionClientResponse = await response.json();
+
+        guesses = sessionData.guesses;
+		gameStatus = sessionData.gameStatus;
+	};
+
 </script>
 
 <main>
     <div class="flex justify-center-safe">
         <div>
-            <div class="dropdown dropdown-bottom dropdown-open">
-                <div class="flex gap-2">
-                    <Searchbar 
-                                bind:value={searchQuery}
-                                {onSearch}
-                                {onClear}
-                                minCharacters={2} />
-                    <button class="btn btn-outline btn-warning">
+            <div class="dropdown dropdown-bottom dropdown-open flex mt-2">
+                <div class="flex flex-1 gap-3">
+                    <Searchbar bind:value={searchQuery}
+                               {onSearch}
+                               {onClear}
+                               minCharacters={2} 
+                               class="flex flex-1"/>
+                    <button class="btn btn-outline btn-warning w-24">
                         Give Up
                     </button>
                 </div>
@@ -97,7 +115,7 @@
                 </ul>
                 {/if}
             </div>
-            <div class="mt-5">
+            <div class="mt-2">
                 <ul>
                     {#each guesses as guess, index}
                     <li>

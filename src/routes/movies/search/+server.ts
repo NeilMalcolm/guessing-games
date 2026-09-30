@@ -16,7 +16,6 @@ export type { SearchResult, SearchResponse };
 export const GET: RequestHandler = async ({ url }) => {
     let titleToSearchFor = url.searchParams.get('title');
 
-    console.log(`Searching for ${titleToSearchFor}`);
     if (!titleToSearchFor) {
         return json([]);
     }
@@ -33,7 +32,6 @@ export const GET: RequestHandler = async ({ url }) => {
         return json([]);
     }
 
-    console.log(movies);
     // Group and check for duplicate titles
     const formattedResults = formatTitlesWithYearForDuplicates(movies || []);
 

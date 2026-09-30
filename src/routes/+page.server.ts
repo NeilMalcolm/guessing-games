@@ -1,8 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { supabaseAdmin } from '$lib/supabaseAdmin';
 import { dailyMoviesTable, gamesSessionTable, type DailyMovieWithDetails, type GameSessionResponse } from '$lib/types/supabasetables';
-import { generateGuessResponse } from '$lib/utils/gameLogic';
-import type { GuessResponse } from '$lib/types/guess';
+import { mapGameSessionToClientResponse } from '$lib/utils/gameLogic';
 
 export const load: PageServerLoad = async ({ locals }) => {
     // 1. Get user session
@@ -28,6 +27,7 @@ export const load: PageServerLoad = async ({ locals }) => {
               poster_path,
               genres,
               director,
+              director_profile_path,
               popularity,
               cast_members,
               box_office,
@@ -88,26 +88,6 @@ export const load: PageServerLoad = async ({ locals }) => {
         return { guesses: [], gameStatus: 'in_progress' };
     }
 
-    console.log(gameSessionData);
-    // 4. Map guesses to GuessResponse[]
-    // Ensure the guesses are sorted by guess_number desc so they display 
-    // in order of newest to oldest
-    const sortedGuesses = 
-        [...gameSessionData.guesses]
-        .sort((a, z) => z.guess_number - a.guess_number);
-
-    const mappedGuesses = sortedGuesses.map(guessRecord => {
-        if (!guessRecord.movie) return null;
-        return generateGuessResponse(
-            guessRecord.movie, 
-            dailyMovie, 
-            guessRecord.is_correct, 
-            gameSessionData.status
-        );
-    }).filter(Boolean) as GuessResponse[];
-
-    return { 
-        guesses: mappedGuesses, 
-        gameStatus: gameSessionData.status 
-    };
+    return mapGameSessionToClientResponse(gameSessionData, dailyMovie);
 };
+
