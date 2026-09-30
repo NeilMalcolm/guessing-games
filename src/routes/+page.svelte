@@ -62,6 +62,7 @@
 	 */
 	async function makeGuess(guess: SearchResult) {
 		if (isGameFinished) {
+            console.log('game is finished');
 			return;
 		}
 
