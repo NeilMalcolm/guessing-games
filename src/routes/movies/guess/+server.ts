@@ -134,7 +134,7 @@ async function addGuessToDatabase(
       
   if (!gameSession) {
     // 1. a create if non-existant for today
-    const { data: newSession, error: createError } = await locals.supabase
+    const { data: newSession, error: createError } = await supabaseAdmin
       .from(gamesSessionTable)
       .insert({
         user_id: user.id,
@@ -188,7 +188,7 @@ async function addGuessToDatabase(
   const nextGuessNumber = (gameSession.guesses ?? []).length + 1;
   const isCorrect = guessedMovie.id === targetMovie.id;
 
-  const { data: newGuess, error: saveGuessError } = await locals.supabase
+  const { data: newGuess, error: saveGuessError } = await supabaseAdmin
     .from(guessTable)
     .insert({
       game_id: gameSession.id,
