@@ -1,7 +1,6 @@
-import { Match, type GuessResponse } from "$lib/types/guess";
-import type { Movie } from "$lib/types/supabasetables";
+import { Match, type GuessResponse, type GameSessionClientResponse } from "$lib/types/guess";
+import type { Movie, GameSessionResponse, GameSessionStatus } from "$lib/types/supabasetables";
 import { PUBLIC_TMDB_THUMB_URL } from "$env/static/public";
-import type { GameSessionStatus } from "$lib/types/supabasetables";
 
 const CAST_MEMBER_DISPLAY_COUNT: number = 5;
 
@@ -134,3 +133,30 @@ const formatName = (fullName: string | null): string => {
   // Combine the first initial with the remaining parts
   return `${first[0].toUpperCase()}. ${rest.join(' ')}`;
 };
+
+export function mapGameSessionToClientResponse(
+  gameSession: GameSessionResponse,
+  dailyMovie: Movie
+): GameSessionClientResponse {
+  const sortedGuesses = [...(gameSession.guesses ?? [])].sort(
+    (a, z) => z.guess_number - a.guess_number
+  );
+
+  const mappedGuesses = sortedGuesses
+    .map((guessRecord) => {
+      return guessRecord.movie 
+        ? generateGuessResponse(
+          guessRecord.movie,
+          dailyMovie,
+          guessRecord.is_correct,
+          gameSession.status
+        ) 
+        : null;
+    })
+    .filter(Boolean) as GuessResponse[];
+
+  return {
+    guesses: mappedGuesses,
+    gameStatus: gameSession.status
+  };
+}

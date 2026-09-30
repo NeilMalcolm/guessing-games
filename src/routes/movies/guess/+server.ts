@@ -1,9 +1,9 @@
 import type { RequestHandler } from "./$types";
 import { supabaseAdmin } from "$lib/supabaseAdmin";
 import { json, error as jsonError } from "@sveltejs/kit";
-import type { Movie, GameSessionResponse, GameSessionStatus } from "$lib/types/supabasetables";
+import type { Movie, GameSessionResponse, GameSessionStatus, DailyMovieWithDetails } from "$lib/types/supabasetables";
 import { dailyMoviesTable, guessTable, gamesSessionTable } from "$lib/types/supabasetables";
-import { generateGuessResponse } from "$lib/utils/gameLogic";
+import { mapGameSessionToClientResponse } from "$lib/utils/gameLogic";
 
 export const POST: RequestHandler = async ({ request, locals }) => {
     const today = new Date().toISOString().split('T')[0]; 
@@ -11,7 +11,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     // get today's movie
     console.log(`guessed movie ${guessedMovieId}`);
-    const { data } = await supabaseAdmin
+    const { data: dailyData } = await supabaseAdmin
         .from(dailyMoviesTable)
         .select(`
             play_date,
@@ -23,6 +23,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
               poster_path,
               genres,
               director,
+              director_profile_path,
               popularity,
               cast_members,
               box_office,
@@ -32,33 +33,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             )
         `)
         .eq('play_date', today)
-        .single();
+        .single<DailyMovieWithDetails>();
 
-    const dailyMovie = data?.movie as unknown as Movie | undefined;
+    const dailyMovie = dailyData?.movie;
         
     if (!dailyMovie?.id) {
       console.log("return empty");
-      return json([]);
+      return jsonError(404, "No daily movie found for today");
     }
 
     const { data: guessMovieDetails, error: guessMovieError } = await supabaseAdmin
       .from('movies')
       .select('*')
       .eq('id', guessedMovieId)
-      .single();
+      .single<Movie>();
 
     if (guessMovieError || !guessMovieDetails) {
       console.log("return 500");
-      return jsonError(500, "No value back for id");
+      return jsonError(404, "No value back for id");
     }
 
     const gameSession = await addGuessToDatabase(guessMovieDetails, dailyMovie, locals);
-    const isCorrect = guessMovieDetails.id === dailyMovie.id;
+    const clientResponse = mapGameSessionToClientResponse(gameSession, dailyMovie);
 
-    const response = generateGuessResponse(guessMovieDetails, dailyMovie, isCorrect, gameSession.status);
-
-    return json(response);
+    return json(clientResponse);
 };
+
 
 async function addGuessToDatabase(
   guessedMovie: Movie,
@@ -111,6 +111,7 @@ async function addGuessToDatabase(
               poster_path,
               genres,
               director,
+              director_profile_path,
               popularity,
               cast_members,
               box_office,
@@ -224,8 +225,49 @@ async function addGuessToDatabase(
     if (updateError) {
       console.error("Failed to update game session status:", updateError);
     }
-    gameSession.status = newStatus;
   }
 
-  return gameSession;
+  // Reload the full game session with all guesses and joined movie data
+  const { data: reloadedSession, error: reloadError } = await supabaseAdmin
+    .from(gamesSessionTable)
+    .select(`
+        id,
+        user_id,
+        target_movie_id,
+        status,
+        max_attempts,
+        created_at,
+        updated_at,
+        guesses: guesses (
+          id,
+          guess_number,
+          movie_id,
+          is_correct,
+          created_at,
+          movie: movies (
+              id,
+              title,
+              release_year,
+              poster_path,
+              genres,
+              director,
+              director_profile_path,
+              popularity,
+              cast_members,
+              box_office,
+              rating,
+              min_age,
+              certifications
+          )
+        )
+      `)
+    .eq('id', gameSession.id)
+    .single<GameSessionResponse>();
+
+  if (reloadError || !reloadedSession) {
+    console.error("Failed to reload game session:", reloadError);
+    throw jsonError(500, "Failed to reload game session");
+  }
+
+  return reloadedSession;
 }

@@ -14,6 +14,11 @@ export interface GuessResponse {
   status: GameSessionStatus;
 }
 
+export interface GameSessionClientResponse {
+  guesses: GuessResponse[];
+  gameStatus: GameSessionStatus;
+}
+
 export interface PropertyResult {
   value: string,
   match: Match,
@@ -49,8 +54,8 @@ export function getArrowForMatch(match: Match) : string {
 }
 
 export function getTextColorForMatch(match: Match) : string {
-    if (match === Match.Exact) return "text-white";
-    if (match === Match.HigherClose || match === Match.LowerClose) return "text-orange-400";
+    if (match === Match.Exact) return "text-emerald-400";
+    if (match === Match.HigherClose || match === Match.LowerClose) return "text-orange-800";
 
     return "text-white";
 }
