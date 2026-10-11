@@ -55,7 +55,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     const gameSession = await addGuessToDatabase(guessMovieDetails, dailyMovie, locals);
     const clientResponse = mapGameSessionToClientResponse(gameSession, dailyMovie);
-
     return json(clientResponse);
 };
 
@@ -88,7 +87,7 @@ async function addGuessToDatabase(
     throw jsonError(401, "No user found");
   }
   
-  const { data, error } = await locals.supabase
+  const { data, error } = await supabaseAdmin
     .from(gamesSessionTable)
     .select(`
         id,
@@ -123,7 +122,7 @@ async function addGuessToDatabase(
       `)
     .eq('user_id', user.id)
     .eq('target_movie_id', targetMovie.id)
-    .maybeSingle();
+    .maybeSingle<GameSessionResponse>();
 
   if (error) {
     console.error("Error fetching game session:", error);

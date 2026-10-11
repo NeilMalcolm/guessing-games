@@ -3,15 +3,19 @@
 	import DataMatch from "./+DataMatch.svelte";
 	import Profile from "./+Profile.svelte";
 
+    interface GuessProps {
+        guess: GuessResponse,
+        index: Number,
+        animate?: Boolean
+    }
+
     let {
-         guess, 
-         index,
-         ...props 
+        guess, 
+        index,
+        animate = false,
+        ...props 
     } 
-    : {
-         guess: GuessResponse,
-         index: number 
-    } = $props();
+    : GuessProps = $props();
 
 </script>
 <div class="card bg-base-300 shadow-md mb-3 overflow-hidden">
@@ -43,23 +47,31 @@
                 <div class="grid grid-cols-2 gap-2">
                     {#if guess.yearResult}
                         <DataMatch title="Year" 
-                                   propertyResult={guess.yearResult}/>
+                                   propertyResult={guess.yearResult}
+                                   {animate}
+                                   class="{`[animation-delay:150ms]`}"/>
                     {/if}
 
                     {#if guess.boxOfficeResult}
                         <DataMatch title="Box Office"
-                                   propertyResult={guess.boxOfficeResult}/>
+                                   propertyResult={guess.boxOfficeResult}
+                                   {animate}
+                                   class="{`[animation-delay:600ms]`}"/>
                     {/if}
 
                     {#if guess.ratingResult}
                         <DataMatch title="Rating" 
-                                   propertyResult={guess.ratingResult}/>
+                                   propertyResult={guess.ratingResult}
+                                   {animate}
+                                   class="{`[animation-delay:900ms]`}"/>
                     {/if}
 
                     {#if guess.ageRatingResult}
                         <DataMatch title="Certification" 
                                    propertyResult={guess.ageRatingResult} 
-                                   showArrow={false}/>
+                                   showArrow={false}
+                                   {animate}
+                                   class="{`[animation-delay:1300ms]`}"/>
                     {/if}
                 </div>
                 

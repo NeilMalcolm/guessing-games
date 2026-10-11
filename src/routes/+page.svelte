@@ -13,6 +13,7 @@
 	let searchResults: SearchResponse | null = $state(null);
 	let gameStatus = $derived(data.gameStatus);
 	let isGameFinished: boolean = $derived(gameStatus !== 'in_progress');
+	let newestGuessNumber: Number = $state(-1);
 	
 	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
 
@@ -83,9 +84,10 @@
 
 		const sessionData: GameSessionClientResponse = await response.json();
 
+		newestGuessNumber = 0;
         guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
-	};
+	}; 
 
 </script>
 
@@ -119,7 +121,7 @@
                 <ul>
                     {#each guesses as guess, index}
                     <li>
-                        <Guess {guess} index={guesses.length - index}/>
+                        <Guess {guess} index={guesses.length - index} animate={index === newestGuessNumber}/>
                     </li>
                     {/each}
                 </ul>
