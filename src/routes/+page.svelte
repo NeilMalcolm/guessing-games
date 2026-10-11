@@ -107,9 +107,9 @@
                 </div>
 
                 {#if searchResults}
-                <ul class="dropdown-content z-50 list bg-base-100 rounded-box shadow-xl border border-base-300 mt-3 max-h-[500px] overflow-y-auto">
+                <ul class="dropdown-content z-50 list bg-base-100 rounded-box shadow-xl border border-base-300 mt-2 max-h-[500px] overflow-y-auto w-full">
                     {#each searchResults.results as searchResult}
-                    <li>
+                    <li class="w-full">
                         <SearchItem {searchResult} 
                                     {onResultClicked}/>
                     </li>

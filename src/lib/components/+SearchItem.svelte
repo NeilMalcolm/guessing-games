@@ -13,7 +13,7 @@
 
 </script>
 
-<button class="list-row" onclick={() => onResultClicked(searchResult)}>
+<button class="flex w-full items-center gap-4 p-4 text-left cursor-pointer hover:bg-base-200" onclick={() => onResultClicked(searchResult)}>
     <div>
         {#if searchResult.imagePath}
             <img class="w-s rounded-md" 

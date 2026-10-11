@@ -20,12 +20,13 @@ export const GET: RequestHandler = async ({ url }) => {
         return json([]);
     }
 
-    // Search Supabase movies table directly using ilike
+    // Search Supabase movies table using movie_search function
+    // This function allows us to prioritize searches in the following order:
+    // 1. Exact name match (title ilike 'Example')
+    // 2. Starts with (title ilike 'Example%')
+    // 3. Contains (title ilike '%Example%' 
     const { data: movies, error: dbError } = await supabaseAdmin
-        .from('movies')
-        .select('id, title, release_year, poster_path')
-        .ilike('title', `%${titleToSearchFor}%`)
-        .limit(10);
+        .rpc('movie_search', { search_term: titleToSearchFor });
     
     if (dbError) {
         console.error("Supabase search error:", dbError);
