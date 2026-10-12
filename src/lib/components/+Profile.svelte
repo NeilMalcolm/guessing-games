@@ -1,13 +1,16 @@
 <script lang="ts">
     import { getBadgeClassForMatch, Match, type CastPropertyResult } from "$lib/types/guess";
     
+    interface ProfileProps {
+        castMember: CastPropertyResult,
+        success: boolean
+    }
+
     let 
     {
-        castMember
-    } : 
-    {
-        castMember: CastPropertyResult
-    } = $props();
+        castMember,
+        success
+    }: ProfileProps = $props();
 
 </script>
 <div class="flex flex-col items-center">
@@ -17,6 +20,6 @@
         </div>
     </div>
     <div>
-        <span class={"wrap-break-word text-xs " + (castMember.match === Match.Exact ? "text-success" : "opacity-90")}>{castMember.value}</span>
+        <span class={"wrap-break-word text-xs " + (castMember.match === Match.Exact ? (success ? "text-neutral/80" : "text-success") : "opacity-90")}>{castMember.value}</span>
     </div>
 </div>
