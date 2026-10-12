@@ -3,6 +3,7 @@
 	import type { SearchResponse, SearchResult } from '../movies/search/+server';
 	import SearchItem from '$lib/components/+SearchItem.svelte';
 	import Guess from '$lib/components/+Guess.svelte';
+	import ResultsModal from '$lib/components/+ResultsModal.svelte';
 	import type { GameSessionClientResponse, GuessResponse } from '$lib/types/guess';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
@@ -11,16 +12,25 @@
 
 	let searchQuery = $state('');
 	let searchResults: SearchResponse | null = $state(null);
-	let gameStatus: string = $derived(data.gameStatus);
+	let gameStatus: string = $state(untrack(() => data.gameStatus ?? 'in_progress'));
 	let isGameFinished: boolean = $derived(gameStatus !== 'in_progress');
 	let newestGuessNumber: Number = $state(-1);
-	
+	let showResults = $state(false);
+	let showViewResults = $state(untrack(() => data.gameStatus !== 'in_progress'));
+
 	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
 		gameStatus = data.gameStatus ?? 'in_progress';
+		showViewResults = data.gameStatus !== 'in_progress';
 	});
+
+	async function onGuessSuccess() {
+		showViewResults = true;
+
+		setTimeout(() => { showResults = true; }, 800);
+	}
 
 	/**
 	 * Handles search from the searchbar.
@@ -28,7 +38,7 @@
 	 */
 	async function onSearch(searchTerm: String) {
 		if (isGameFinished) {
-            console.log('game is finished');
+			console.log('game is finished');
 			return;
 		}
 
@@ -36,7 +46,7 @@
 		const response = await fetch(`/movies/search?title=${searchTerm}`);
 
 		if (!response.ok) {
-			throw new Error("Failed to get search data");	
+			throw new Error('Failed to get search data');
 		}
 
 		let json = await response.json();
@@ -57,12 +67,12 @@
 	 */
 	async function onResultClicked(guess: SearchResult) {
 		if (isGameFinished) {
-            console.log('game is finished');
+			console.log('game is finished');
 			return;
 		}
 
 		onClear();
-		
+
 		await makeGuess(guess);
 		// ensure the search results clear, even if a debounce happened.
 		onClear();
@@ -74,7 +84,7 @@
 	 */
 	async function makeGuess(guess: SearchResult) {
 		if (isGameFinished) {
-            console.log('game is finished');
+			console.log('game is finished');
 			return;
 		}
 
@@ -85,7 +95,7 @@
 			},
 			body: JSON.stringify({
 				guessedMovieId: guess.id,
-					date: data.playDate
+				date: data.playDate
 			})
 		});
 
@@ -97,48 +107,77 @@
 		const sessionData: GameSessionClientResponse = await response.json();
 
 		newestGuessNumber = 0;
-        guesses = sessionData.guesses;
+		guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
-	}; 
 
+		showViewResults = sessionData.gameStatus === 'lost';
+	}
 </script>
 
 <main>
-    <div class="flex justify-center-safe">
-        <div>
-            <div class="dropdown dropdown-bottom dropdown-open flex mt-2">
-                <div class="flex flex-1 gap-3">
-                    <Searchbar bind:value={searchQuery}
-                               {onSearch}
-                               {onClear}
-                               minCharacters={2}
-							   disabled={isGameFinished}/>
-                    <button class="btn btn-outline btn-warning w-24"
-							disabled={isGameFinished}>
-                        Give Up
-                    </button>
-                </div>
+	<div class="flex justify-center-safe">
+		<div>
+			<div class="dropdown dropdown-bottom dropdown-open flex mt-2">
+				<div class="flex flex-1 gap-3">
+					<Searchbar
+						bind:value={searchQuery}
+						{onSearch}
+						{onClear}
+						minCharacters={2}
+						disabled={isGameFinished}
+					/>
+					<button class="btn btn-outline btn-warning w-24" disabled={isGameFinished}>
+						Give Up
+					</button>
+				</div>
 
-                {#if searchResults}
-                <ul class="dropdown-content z-50 list bg-base-100 rounded-box shadow-xl border border-base-300 mt-2 max-h-[500px] overflow-y-auto w-full">
-                    {#each searchResults.results as searchResult}
-                    <li class="w-full">
-                        <SearchItem {searchResult} 
-                                    {onResultClicked}/>
-                    </li>
-                    {/each}
-                </ul>
-                {/if}
-            </div>
-            <div class="mt-2">
-                <ul>
-                    {#each guesses as guess, index (guess.title)}
-                    <li>
-                        <Guess {guess} index={guesses.length - index} animate={index == newestGuessNumber}/>
-                    </li>
-                    {/each}
-                </ul>
-            </div>
-        </div>
-    </div>
+				{#if searchResults}
+					<ul
+						class="dropdown-content z-50 list bg-base-100 rounded-box shadow-xl border border-base-300 mt-2 max-h-[500px] overflow-y-auto w-full"
+					>
+						{#each searchResults.results as searchResult}
+							<li class="w-full">
+								<SearchItem {searchResult} {onResultClicked} />
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+			{#if showViewResults}
+				{@const won = gameStatus === 'won'}
+				<div class="flex flex-col items-center gap-3 mt-4">
+					<p class="text-lg font-semibold text-center">
+						{won ? 'Well done, you guessed right!' : 'Sorry, better luck next time'}
+					</p>
+					<button
+						class="btn btn-soft {won ? 'btn-success' : 'btn-error'}"
+						onclick={() => (showResults = true)}
+					>
+						View Results
+					</button>
+				</div>
+			{/if}
+			<div class="mt-2">
+				<ul>
+					{#each guesses as guess, index (guess.title)}
+						<li>
+							<Guess
+								{guess}
+								index={guesses.length - index}
+								animate={index == newestGuessNumber}
+								onSuccess={onGuessSuccess}
+							/>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		</div>
+	</div>
 </main>
+
+<ResultsModal
+	bind:open={showResults}
+	{guesses}
+	won={gameStatus === 'won'}
+	playDate={data.playDate}
+/>
