@@ -224,35 +224,46 @@ describe('+Guess.svelte', () => {
 			const adventureBadge = genresDiv.getByText('Adventure');
 
 			const directorSection = page.getByTitle('Director');
+			const directorProfile = directorSection.getByTestId('profile');
 			const directorName = directorSection.getByText('Danny Devito');
 			const directorImg = directorSection.getByAltText('Profile picture for Danny Devito');
 
 			const castSection = page.getByTitle('Cast');
+			const castProfiles = castSection.getByTestId('profile');
 			const johnName = castSection.getByText('John Smith');
 			const johnImg = castSection.getByAltText('Profile picture for John Smith');
 
-			// Immediately upon mount, elements start in unrevealed / regular state (genres start transparent)
+			// Immediately upon mount, elements start in unrevealed / transparent state
 			await expect.element(actionBadge).toHaveClass('opacity-0');
 			await expect.element(actionBadge).not.toHaveClass('opacity-100');
 			await expect.element(adventureBadge).toHaveClass('opacity-0');
 			await expect.element(adventureBadge).not.toHaveClass('opacity-100');
 
+			await expect.element(directorProfile).toHaveClass('opacity-0');
+			await expect.element(directorProfile).not.toHaveClass('opacity-100');
 			await expect.element(directorName).not.toHaveClass('text-success');
 			await expect.element(directorImg.element().parentElement).not.toHaveClass('ring-success');
 
+			await expect.element(castProfiles.first()).toHaveClass('opacity-0');
+			await expect.element(castProfiles.first()).not.toHaveClass('opacity-100');
 			await expect.element(johnName).not.toHaveClass('text-success');
 			await expect.element(johnImg.element().parentElement).not.toHaveClass('ring-success');
 
 			// Wait for the full animation sequence to finish
 			await new Promise((resolve) => setTimeout(resolve, 350));
 
-			// After the sequence finishes, genres transition to visible and exact matches are revealed
+			// After the sequence finishes, genres, director, and cast transition to visible
 			await expect.element(actionBadge).toHaveClass('opacity-100');
 			await expect.element(actionBadge).not.toHaveClass('opacity-0');
 			await expect.element(adventureBadge).toHaveClass('opacity-100');
 			await expect.element(adventureBadge).not.toHaveClass('opacity-0');
 
+			await expect.element(directorProfile).toHaveClass('opacity-100');
+			await expect.element(directorProfile).not.toHaveClass('opacity-0');
 			await expect.element(directorImg.element().parentElement).toHaveClass('ring-success');
+
+			await expect.element(castProfiles.first()).toHaveClass('opacity-100');
+			await expect.element(castProfiles.first()).not.toHaveClass('opacity-0');
 			await expect.element(johnImg.element().parentElement).toHaveClass('ring-success');
 		});
 	});

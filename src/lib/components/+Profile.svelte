@@ -10,7 +10,10 @@
 	let { castMember, success, revealed = true }: ProfileProps = $props();
 </script>
 
-<div class="flex flex-col items-center">
+<div
+	class={`flex flex-col items-center transition-all duration-500 ${revealed ? 'opacity-100' : 'opacity-0'}`}
+	data-testid="profile"
+>
 	<div class="avatar">
 		<div
 			class={`w-15 rounded-full transition-all duration-500 ` +
