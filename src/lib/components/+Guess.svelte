@@ -22,11 +22,11 @@
 		const genresCount = guess.genresResult ? guess.genresResult.length : 0;
 		const castCount = guess.castMembersResult ? guess.castMembersResult.length : 0;
 
-		const genreStep = 250;
-		const dataMatchStep = 350;
+		const genreStep = 300;
+		const dataMatchStep = 400;
 		const directorStep = 500;
 		const castStep = 250;
-		const cardSuccessStep = 400;
+		const cardSuccessStep = 1000;
 
 		const genresEnd = genresCount > 0 ? 150 + (genresCount - 1) * genreStep : 0;
 		const dataMatchStart = genresCount > 0 ? genresEnd + 350 : 150;
@@ -159,7 +159,7 @@
 					<div class="flex flex-wrap gap-1 items-center mb-3" title="Genres">
 						{#each guess.genresResult as genreResult, i}
 							<span
-								class={`badge-s transition-all duration-500 ${revealedGenres[i] ? getBadgeClassForMatch(genreResult.match, isSuccessBg) : 'badge badge-neutral'}`}
+								class={`badge-s transition-all duration-500 ${revealedGenres[i] ? 'opacity-100' : 'opacity-0'} ${getBadgeClassForMatch(genreResult.match, isSuccessBg)}`}
 							>
 								{genreResult.value}
 							</span>

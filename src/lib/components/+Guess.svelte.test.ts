@@ -231,9 +231,11 @@ describe('+Guess.svelte', () => {
 			const johnName = castSection.getByText('John Smith');
 			const johnImg = castSection.getByAltText('Profile picture for John Smith');
 
-			// Immediately upon mount, elements start in unrevealed / regular state
-			await expect.element(actionBadge).toHaveClass('badge-neutral');
-			await expect.element(actionBadge).not.toHaveClass('badge-success');
+			// Immediately upon mount, elements start in unrevealed / regular state (genres start transparent)
+			await expect.element(actionBadge).toHaveClass('opacity-0');
+			await expect.element(actionBadge).not.toHaveClass('opacity-100');
+			await expect.element(adventureBadge).toHaveClass('opacity-0');
+			await expect.element(adventureBadge).not.toHaveClass('opacity-100');
 
 			await expect.element(directorName).not.toHaveClass('text-success');
 			await expect.element(directorImg.element().parentElement).not.toHaveClass('ring-success');
@@ -244,9 +246,11 @@ describe('+Guess.svelte', () => {
 			// Wait for the full animation sequence to finish
 			await new Promise((resolve) => setTimeout(resolve, 350));
 
-			// After the sequence finishes, exact matches are revealed to success
-			await expect.element(actionBadge).not.toHaveClass('badge-neutral');
-			await expect.element(adventureBadge).not.toHaveClass('badge-neutral');
+			// After the sequence finishes, genres transition to visible and exact matches are revealed
+			await expect.element(actionBadge).toHaveClass('opacity-100');
+			await expect.element(actionBadge).not.toHaveClass('opacity-0');
+			await expect.element(adventureBadge).toHaveClass('opacity-100');
+			await expect.element(adventureBadge).not.toHaveClass('opacity-0');
 
 			await expect.element(directorImg.element().parentElement).toHaveClass('ring-success');
 			await expect.element(johnImg.element().parentElement).toHaveClass('ring-success');
