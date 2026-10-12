@@ -209,6 +209,49 @@ describe('+Guess.svelte', () => {
 			await expect.element(tile).not.toHaveClass('bg-success');
 		});
 	});
+
+	describe('choreographed element reveals during animation', () => {
+		it('reveals genres, director, and cast from regular/unrevealed state to success in sequence when animated', async () => {
+			render(Guess, {
+				guess: getGuessResponseWithMatch(Match.Exact, true),
+				index: 0,
+				animate: true,
+				delay: 300
+			});
+
+			const genresDiv = page.getByTitle('Genres');
+			const actionBadge = genresDiv.getByText('Action');
+			const adventureBadge = genresDiv.getByText('Adventure');
+
+			const directorSection = page.getByTitle('Director');
+			const directorName = directorSection.getByText('Danny Devito');
+			const directorImg = directorSection.getByAltText('Profile picture for Danny Devito');
+
+			const castSection = page.getByTitle('Cast');
+			const johnName = castSection.getByText('John Smith');
+			const johnImg = castSection.getByAltText('Profile picture for John Smith');
+
+			// Immediately upon mount, elements start in unrevealed / regular state
+			await expect.element(actionBadge).toHaveClass('badge-neutral');
+			await expect.element(actionBadge).not.toHaveClass('badge-success');
+
+			await expect.element(directorName).not.toHaveClass('text-success');
+			await expect.element(directorImg.element().parentElement).not.toHaveClass('ring-success');
+
+			await expect.element(johnName).not.toHaveClass('text-success');
+			await expect.element(johnImg.element().parentElement).not.toHaveClass('ring-success');
+
+			// Wait for the full animation sequence to finish
+			await new Promise((resolve) => setTimeout(resolve, 350));
+
+			// After the sequence finishes, exact matches are revealed to success
+			await expect.element(actionBadge).not.toHaveClass('badge-neutral');
+			await expect.element(adventureBadge).not.toHaveClass('badge-neutral');
+
+			await expect.element(directorImg.element().parentElement).toHaveClass('ring-success');
+			await expect.element(johnImg.element().parentElement).toHaveClass('ring-success');
+		});
+	});
 });
 
 async function assertMatchFields(expectedClass: string, arrow: string) {
