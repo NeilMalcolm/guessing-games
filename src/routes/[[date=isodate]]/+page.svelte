@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Searchbar from '$lib/components/+Searchbar.svelte';
-	import type { SearchResponse, SearchResult } from './movies/search/+server';
+	import type { SearchResponse, SearchResult } from '../movies/search/+server';
 	import SearchItem from '$lib/components/+SearchItem.svelte';
 	import Guess from '$lib/components/+Guess.svelte';
 	import type { GameSessionClientResponse, GuessResponse } from '$lib/types/guess';
@@ -84,7 +84,8 @@
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
-				guessedMovieId: guess.id
+				guessedMovieId: guess.id,
+					date: data.playDate
 			})
 		});
 

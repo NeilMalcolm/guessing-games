@@ -1,20 +1,29 @@
 import type { PageServerLoad } from './$types';
+import { error } from '@sveltejs/kit';
 import { supabaseAdmin } from '$lib/supabaseAdmin';
 import { dailyMoviesTable, gamesSessionTable, type DailyMovieWithDetails, type GameSessionResponse } from '$lib/types/supabasetables';
 import { mapGameSessionToClientResponse } from '$lib/utils/gameLogic';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, params }) => {
+    // default to today if no param is provided.
+    const today = new Date().toISOString().split('T')[0];
+    const playDate = params.date ?? today;
+
+    // We won't support future dates.
+    if (playDate > today) {
+        error(404, 'Not found');
+    }
+
     // 1. Get user session
     const { user } = await locals.safeGetSession();
     
     // If no user, they haven't guessed yet, return empty
     if (!user) {
         console.log('no user, returning []');
-        return { guesses: [], gameStatus: 'in_progress' };
+        return { guesses: [], gameStatus: 'in_progress', playDate };
     }
 
     // 2. Get today's movie
-    const today = new Date().toISOString().split('T')[0]; 
     const { data: dailyData } = await supabaseAdmin
         .from(dailyMoviesTable)
         .select(`
@@ -36,13 +45,13 @@ export const load: PageServerLoad = async ({ locals }) => {
               certifications
             )
         `)
-        .eq('play_date', today)
+        .eq('play_date', playDate)
         .single<DailyMovieWithDetails>();
 
     const dailyMovie = dailyData?.movie;
     if (!dailyMovie) {
         console.log('no daily movie, returning []');
-        return { guesses: [], gameStatus: 'in_progress' };
+        return { guesses: [], gameStatus: 'in_progress', playDate };
     }
 
     // 3. Get game session
@@ -86,10 +95,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 
     if (!gameSessionData || !gameSessionData.guesses) {
         console.log('no gameSessionData, returning []');
-        return { guesses: [], gameStatus: 'in_progress' };
+        return { guesses: [], gameStatus: 'in_progress', playDate };
     }
 
     console.log(`${gameSessionData.status}`);
-    return mapGameSessionToClientResponse(gameSessionData, dailyMovie);
+    return { ...mapGameSessionToClientResponse(gameSessionData, dailyMovie), playDate };
 };
 
