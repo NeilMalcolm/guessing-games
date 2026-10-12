@@ -38,7 +38,7 @@
 		}
 
 		isSuccessBg = false;
-		const delayMs = delay ?? SUCCESS_BACKGROUND_DELAY_MS;
+		const delayMs = delay ?? SUCCESS_BACKGROUND_DELAY_MS + 500;
 		const timer = setTimeout(() => {
 			isSuccessBg = true;
 		}, delayMs);

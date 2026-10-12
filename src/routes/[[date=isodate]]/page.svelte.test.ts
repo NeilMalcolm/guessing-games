@@ -46,14 +46,10 @@ describe('+page.svelte game over states', () => {
 		});
 
 		// Success message must be visible
-		await expect
-			.element(page.getByText('Well done, you guessed right!'))
-			.toBeInTheDocument();
+		await expect.element(page.getByText('Well done, you guessed right!')).toBeInTheDocument();
 
 		// Failure message should NOT be visible
-		await expect
-			.element(page.getByText('Sorry, better luck next time'))
-			.not.toBeInTheDocument();
+		await expect.element(page.getByText('Sorry, better luck next time')).not.toBeInTheDocument();
 
 		// View Results button should have soft success style
 		const viewResultsBtn = page.getByRole('button', { name: 'View Results' });
@@ -78,14 +74,10 @@ describe('+page.svelte game over states', () => {
 		});
 
 		// Failure message must be visible
-		await expect
-			.element(page.getByText('Sorry, better luck next time'))
-			.toBeInTheDocument();
+		await expect.element(page.getByText('Sorry, better luck next time')).toBeInTheDocument();
 
 		// Success message should NOT be visible
-		await expect
-			.element(page.getByText('Well done, you guessed right!'))
-			.not.toBeInTheDocument();
+		await expect.element(page.getByText('Well done, you guessed right!')).not.toBeInTheDocument();
 
 		// View Results button should have soft error style
 		const viewResultsBtn = page.getByRole('button', { name: 'View Results' });
@@ -110,12 +102,8 @@ describe('+page.svelte game over states', () => {
 		});
 
 		// Neither message should be present
-		await expect
-			.element(page.getByText('Well done, you guessed right!'))
-			.not.toBeInTheDocument();
-		await expect
-			.element(page.getByText('Sorry, better luck next time'))
-			.not.toBeInTheDocument();
+		await expect.element(page.getByText('Well done, you guessed right!')).not.toBeInTheDocument();
+		await expect.element(page.getByText('Sorry, better luck next time')).not.toBeInTheDocument();
 
 		// View Results button should not be present
 		await expect
@@ -142,8 +130,24 @@ describe('+page.svelte game over states', () => {
 
 		// Modal should display win title and copy button
 		await expect.element(page.getByText('You got it!')).toBeInTheDocument();
-		await expect
-			.element(page.getByRole('button', { name: 'Copy results' }))
-			.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: 'Copy results' })).toBeInTheDocument();
+	});
+
+	it('makes the latest card successful and replays animation when Test Win button is clicked', async () => {
+		render(Page, {
+			data: createPageData({
+				guesses: [createMockGuess(false)],
+				gameStatus: 'in_progress'
+			})
+		});
+
+		const testWinBtn = page.getByRole('button', { name: 'Test Win' });
+		await expect.element(testWinBtn).toBeInTheDocument();
+
+		await testWinBtn.click();
+
+		// The latest card tile should be present and animating
+		const tile = page.getByTestId('guess-tile');
+		await expect.element(tile).toBeInTheDocument();
 	});
 });
