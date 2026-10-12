@@ -78,5 +78,24 @@ export class InfraStack extends cdk.Stack {
       schedule: events.Schedule.cron({ minute: '0', hour: '23' }),
     });
     dailyRule.addTarget(new targets.LambdaFunction(dailyPickerLambda));
+
+    // Movie Video Fetcher Lambda (Fetches 100 movies where video is null, queries TMDB for videos, updates Supabase)
+    const movieVideoFetcherLambda = new NodejsFunction(this, 'MovieVideoFetcher', {
+      runtime: lambda.Runtime.NODEJS_24_X,
+      entry: path.join(__dirname, '../src/movie-video-fetcher.ts'),
+      handler: 'handler',
+      timeout: cdk.Duration.minutes(5),
+      environment: {
+        SUPABASE_URL: process.env.SUPABASE_URL || '',
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+        TMDB_ACCESS_TOKEN: process.env.TMDB_ACCESS_TOKEN || '',
+      },
+    });
+
+    // EventBridge Rule: Run every 5 minutes
+    const movieVideoFetcherRule = new events.Rule(this, 'MovieVideoFetcherScheduleRule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+    });
+    movieVideoFetcherRule.addTarget(new targets.LambdaFunction(movieVideoFetcherLambda));
   }
 }

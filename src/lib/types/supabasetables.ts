@@ -31,6 +31,7 @@ export interface Movie {
   vote_count?: number | null;
   min_age: number | null;
   certifications: Record<string, string>;
+  video?: string | null;
   cached_at: string;
 }
 
