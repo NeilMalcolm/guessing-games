@@ -1,5 +1,5 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import {
 	Match,
@@ -265,6 +265,38 @@ describe('+Guess.svelte', () => {
 			await expect.element(castProfiles.first()).toHaveClass('opacity-100');
 			await expect.element(castProfiles.first()).not.toHaveClass('opacity-0');
 			await expect.element(johnImg.element().parentElement).toHaveClass('ring-success');
+		});
+
+		it('invokes onSuccess callback when guess is correct and animation finishes', async () => {
+			const onSuccess = vi.fn();
+			render(Guess, {
+				guess: getGuessResponseWithMatch(Match.Exact, true),
+				index: 0,
+				animate: true,
+				delay: 200,
+				onSuccess
+			});
+
+			expect(onSuccess).not.toHaveBeenCalled();
+
+			await new Promise((resolve) => setTimeout(resolve, 250));
+
+			expect(onSuccess).toHaveBeenCalledOnce();
+		});
+
+		it('does not invoke onSuccess callback when guess is incorrect', async () => {
+			const onSuccess = vi.fn();
+			render(Guess, {
+				guess: getGuessResponseWithMatch(Match.Exact, false),
+				index: 0,
+				animate: true,
+				delay: 200,
+				onSuccess
+			});
+
+			await new Promise((resolve) => setTimeout(resolve, 250));
+
+			expect(onSuccess).not.toHaveBeenCalled();
 		});
 	});
 });

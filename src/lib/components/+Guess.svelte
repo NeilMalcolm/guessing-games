@@ -14,9 +14,17 @@
 		index: Number;
 		animate?: boolean;
 		delay?: number;
+		onSuccess?: () => void;
 	}
 
-	let { guess, index, animate = false, delay, ...props }: GuessProps = $props();
+	let { 
+        guess, 
+        index,
+         animate = false, 
+         delay, 
+         onSuccess, 
+         ...props 
+    }: GuessProps = $props();
 
 	function getSchedule() {
 		const genresCount = guess.genresResult ? guess.genresResult.length : 0;
@@ -26,7 +34,7 @@
 		const dataMatchStep = 400;
 		const directorStep = 500;
 		const castStep = 250;
-		const cardSuccessStep = 1000;
+		const cardSuccessStep = 600;
 
 		const genresEnd = genresCount > 0 ? 150 + (genresCount - 1) * genreStep : 0;
 		const dataMatchStart = genresCount > 0 ? genresEnd + 350 : 150;
@@ -121,6 +129,7 @@
 			timers.push(
 				setTimeout(() => {
 					isSuccessBg = true;
+					onSuccess?.();
 				}, schedule.finalSuccessDelay)
 			);
 		}

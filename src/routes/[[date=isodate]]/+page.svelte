@@ -12,17 +12,25 @@
 
 	let searchQuery = $state('');
 	let searchResults: SearchResponse | null = $state(null);
-	let gameStatus: string = $derived(data.gameStatus);
+	let gameStatus: string = $state(untrack(() => data.gameStatus ?? 'in_progress'));
 	let isGameFinished: boolean = $derived(gameStatus !== 'in_progress');
 	let newestGuessNumber: Number = $state(-1);
 	let showResults = $state(false);
+	let showViewResults = $state(untrack(() => data.gameStatus !== 'in_progress'));
 
 	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
 		gameStatus = data.gameStatus ?? 'in_progress';
+		showViewResults = data.gameStatus !== 'in_progress';
 	});
+
+	async function onGuessSuccess() {
+		showViewResults = true;
+
+		setTimeout(() => { showResults = true; }, 800);
+	}
 
 	/**
 	 * Handles search from the searchbar.
@@ -102,7 +110,7 @@
 		guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
 
-		showResults = sessionData.gameStatus !== 'in_progress';
+		showViewResults = sessionData.gameStatus === 'lost';
 	}
 
 	let replayKey = $state(0);
@@ -112,6 +120,8 @@
 	 */
 	function makeLatestSuccessful() {
 		newestGuessNumber = 0;
+		gameStatus = 'won';
+		showViewResults = false;
 		if (guesses.length === 0) {
 			guesses = [
 				{
@@ -198,7 +208,7 @@
 					</ul>
 				{/if}
 			</div>
-			{#if isGameFinished}
+			{#if showViewResults}
 				{@const won = gameStatus === 'won'}
 				<div class="flex flex-col items-center gap-3 mt-4">
 					<p class="text-lg font-semibold text-center">
@@ -216,7 +226,12 @@
 				<ul>
 					{#each guesses as guess, index (guess.title + (index === 0 ? `-${replayKey}` : ''))}
 						<li>
-							<Guess {guess} index={guesses.length - index} animate={index == newestGuessNumber} />
+							<Guess
+								{guess}
+								index={guesses.length - index}
+								animate={index == newestGuessNumber}
+								onSuccess={onGuessSuccess}
+							/>
 						</li>
 					{/each}
 				</ul>

@@ -40,7 +40,7 @@
 
 		<ol class="text-2xl leading-relaxed mb-4" aria-label="Your guesses">
 			{#each rows as row, i}
-				<li class="whitespace-nowrap">
+				<li class="whitespace-nowrap text-xs">
 					{row}
 				</li>
 			{/each}
