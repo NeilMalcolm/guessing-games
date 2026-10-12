@@ -33,7 +33,7 @@ describe('getGuessSquares', () => {
 		expect(getGuessSquares(makeGuess()).join('')).toBe(B.repeat(7));
 	});
 
-	it('matches the first example: genres exact, year + box office close', () => {
+	it('matches the first user example: genres exact, year + box office close', () => {
 		const guess = makeGuess({
 			genresResult: [prop(Match.Exact), prop(Match.Exact)],
 			yearResult: prop(Match.LowerClose),
@@ -42,7 +42,7 @@ describe('getGuessSquares', () => {
 		expect(getGuessSquares(guess).join('')).toBe(`${G}${Y}${Y}${B}${B}${B}${B}`);
 	});
 
-	it('matches the second example: genres + year exact, cast partial', () => {
+	it('matches the second user example: genres + year exact, cast partial', () => {
 		const guess = makeGuess({
 			genresResult: [prop(Match.Exact)],
 			yearResult: prop(Match.Exact),
@@ -54,61 +54,155 @@ describe('getGuessSquares', () => {
 		expect(getGuessSquares(guess).join('')).toBe(`${G}${G}${B}${B}${B}${B}${Y}`);
 	});
 
-	it('treats some-but-not-all genres as close', () => {
-		const guess = makeGuess({ genresResult: [prop(Match.Exact), prop(Match.None)] });
-		expect(getGuessSquares(guess)[0]).toBe(Y);
-	});
-
-	it('treats all cast matching as a match', () => {
-		const guess = makeGuess({
-			castMembersResult: [
-				{ ...prop(Match.Exact), image: '' },
-				{ ...prop(Match.Exact), image: '' }
-			]
+	describe('individual categories', () => {
+		it('evaluates year correctly for exact, close (higher/lower), and far', () => {
+			expect(getGuessSquares(makeGuess({ yearResult: prop(Match.Exact) }))[1]).toBe(G);
+			expect(getGuessSquares(makeGuess({ yearResult: prop(Match.LowerClose) }))[1]).toBe(Y);
+			expect(getGuessSquares(makeGuess({ yearResult: prop(Match.HigherClose) }))[1]).toBe(Y);
+			expect(getGuessSquares(makeGuess({ yearResult: prop(Match.Lower) }))[1]).toBe(B);
+			expect(getGuessSquares(makeGuess({ yearResult: prop(Match.Higher) }))[1]).toBe(B);
+			expect(getGuessSquares(makeGuess({ yearResult: prop(Match.None) }))[1]).toBe(B);
 		});
-		expect(getGuessSquares(guess)[6]).toBe(G);
+
+		it('evaluates box office correctly for exact, close, and far', () => {
+			expect(getGuessSquares(makeGuess({ boxOfficeResult: prop(Match.Exact) }))[2]).toBe(G);
+			expect(getGuessSquares(makeGuess({ boxOfficeResult: prop(Match.LowerClose) }))[2]).toBe(Y);
+			expect(getGuessSquares(makeGuess({ boxOfficeResult: prop(Match.HigherClose) }))[2]).toBe(Y);
+			expect(getGuessSquares(makeGuess({ boxOfficeResult: prop(Match.Higher) }))[2]).toBe(B);
+		});
+
+		it('evaluates rating correctly for exact, close, and far', () => {
+			expect(getGuessSquares(makeGuess({ ratingResult: prop(Match.Exact) }))[3]).toBe(G);
+			expect(getGuessSquares(makeGuess({ ratingResult: prop(Match.LowerClose) }))[3]).toBe(Y);
+			expect(getGuessSquares(makeGuess({ ratingResult: prop(Match.HigherClose) }))[3]).toBe(Y);
+			expect(getGuessSquares(makeGuess({ ratingResult: prop(Match.Lower) }))[3]).toBe(B);
+		});
+
+		it('evaluates certification correctly for exact, close, and none', () => {
+			expect(getGuessSquares(makeGuess({ ageRatingResult: prop(Match.Exact) }))[4]).toBe(G);
+			expect(getGuessSquares(makeGuess({ ageRatingResult: prop(Match.HigherClose) }))[4]).toBe(Y);
+			expect(getGuessSquares(makeGuess({ ageRatingResult: prop(Match.None) }))[4]).toBe(B);
+		});
+
+		it('evaluates director correctly: only exact is green, others black', () => {
+			expect(
+				getGuessSquares(makeGuess({ directorResult: { ...prop(Match.Exact), image: '' } }))[5]
+			).toBe(G);
+			expect(
+				getGuessSquares(makeGuess({ directorResult: { ...prop(Match.None), image: '' } }))[5]
+			).toBe(B);
+		});
+
+		it('evaluates genres correctly: all exact = green, some exact = yellow, none = black', () => {
+			expect(
+				getGuessSquares(
+					makeGuess({ genresResult: [prop(Match.Exact), prop(Match.Exact)] })
+				)[0]
+			).toBe(G);
+			expect(
+				getGuessSquares(
+					makeGuess({ genresResult: [prop(Match.Exact), prop(Match.None)] })
+				)[0]
+			).toBe(Y);
+			expect(
+				getGuessSquares(
+					makeGuess({ genresResult: [prop(Match.None), prop(Match.None)] })
+				)[0]
+			).toBe(B);
+		});
+
+		it('evaluates cast correctly: all exact = green, some exact = yellow, none = black', () => {
+			expect(
+				getGuessSquares(
+					makeGuess({
+						castMembersResult: [
+							{ ...prop(Match.Exact), image: '' },
+							{ ...prop(Match.Exact), image: '' }
+						]
+					})
+				)[6]
+			).toBe(G);
+			expect(
+				getGuessSquares(
+					makeGuess({
+						castMembersResult: [
+							{ ...prop(Match.Exact), image: '' },
+							{ ...prop(Match.None), image: '' }
+						]
+					})
+				)[6]
+			).toBe(Y);
+			expect(
+				getGuessSquares(
+					makeGuess({
+						castMembersResult: [{ ...prop(Match.None), image: '' }]
+					})
+				)[6]
+			).toBe(B);
+		});
 	});
 
-	it('only counts exact director as a match', () => {
-		expect(
-			getGuessSquares(makeGuess({ directorResult: { ...prop(Match.Exact), image: '' } }))[5]
-		).toBe(G);
-	});
-
-	it('handles empty genres and cast', () => {
+	it('handles empty genres and cast lists gracefully', () => {
 		const squares = getGuessSquares(makeGuess({ genresResult: [], castMembersResult: [] }));
 		expect(squares[0]).toBe(B);
 		expect(squares[6]).toBe(B);
 	});
 
-	it('is all green for the correct guess', () => {
+	it('is all green for the winning guess', () => {
 		expect(getGuessSquares(makeGuess({ isCorrect: true })).join('')).toBe(G.repeat(7));
 	});
 });
 
 describe('getResultRows / formatShareText', () => {
-	// server returns newest first
-	const newest = makeGuess({ isCorrect: true });
-	const oldest = makeGuess();
+	it('matches full game session progression and orders oldest-first', () => {
+		// Guess 1 (first attempt): only genres partial, rating close
+		const guess1 = makeGuess({
+			genresResult: [prop(Match.Exact), prop(Match.None)],
+			ratingResult: prop(Match.LowerClose)
+		}); // Expect: 🟨 ⬛ ⬛ 🟨 ⬛ ⬛ ⬛
 
-	it('orders rows oldest first', () => {
-		expect(getResultRows([newest, oldest])).toEqual([B.repeat(7), G.repeat(7)]);
+		// Guess 2 (second attempt): director exact, year exact, box office close
+		const guess2 = makeGuess({
+			directorResult: { ...prop(Match.Exact), image: '' },
+			yearResult: prop(Match.Exact),
+			boxOfficeResult: prop(Match.HigherClose)
+		}); // Expect: ⬛ 🟩 🟨 ⬛ ⬛ 🟩 ⬛
+
+		// Guess 3 (winning attempt): isCorrect = true
+		const guess3 = makeGuess({ isCorrect: true, status: 'won' }); // Expect: 🟩 🟩 🟩 🟩 🟩 🟩 🟩
+
+		// The server returns guesses newest-first: [guess3, guess2, guess1]
+		const sessionGuesses = [guess3, guess2, guess1];
+		const rows = getResultRows(sessionGuesses);
+
+		expect(rows).toEqual([
+			`${Y}${B}${B}${Y}${B}${B}${B}`,
+			`${B}${G}${Y}${B}${B}${G}${B}`,
+			`${G}${G}${G}${G}${G}${G}${G}`
+		]);
 	});
 
-	it('does not mutate the input', () => {
+	it('does not mutate the input array when reversing', () => {
+		const newest = makeGuess({ isCorrect: true });
+		const oldest = makeGuess();
 		const input = [newest, oldest];
 		getResultRows(input);
-		expect(input).toEqual([newest, oldest]);
+		expect(input[0]).toBe(newest);
+		expect(input[1]).toBe(oldest);
 	});
 
-	it('formats share text', () => {
+	it('formats share text correctly with multiple rows and numbering', () => {
+		const newest = makeGuess({ isCorrect: true });
+		const oldest = makeGuess();
 		expect(formatShareText([newest, oldest], '2026-10-12')).toBe(
 			`Guessing Games 2026-10-12 - 2 guesses\n1. ${B.repeat(7)}\n2. ${G.repeat(7)}`
 		);
 	});
 
-	it('uses singular for one guess', () => {
-		expect(formatShareText([newest], '2026-10-12')).toContain('1 guess\n');
+	it('uses singular for one guess in share text', () => {
+		const singleGuess = makeGuess({ isCorrect: true });
+		expect(formatShareText([singleGuess], '2026-10-12')).toBe(
+			`Guessing Games 2026-10-12 - 1 guess\n1. ${G.repeat(7)}`
+		);
 	});
 });
-

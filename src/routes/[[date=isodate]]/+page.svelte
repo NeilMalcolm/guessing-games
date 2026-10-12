@@ -102,7 +102,6 @@
         guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
 
-		// the game just ended, show the results.
 		showResults = sessionData.gameStatus !== 'in_progress';
 	}; 
 
