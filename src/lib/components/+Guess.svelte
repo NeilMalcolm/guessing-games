@@ -71,7 +71,7 @@
 				{#if guess.genresResult && guess.genresResult.length > 0}
 					<div class="flex flex-wrap gap-1 items-center mb-3" title="Genres">
 						{#each guess.genresResult as genreResult}
-							<span class={`${getBadgeClassForMatch(genreResult.match)} badge-s`}>
+							<span class={`${getBadgeClassForMatch(genreResult.match, isSuccessBg)} badge-s`}>
 								{genreResult.value}
 							</span>
 						{/each}

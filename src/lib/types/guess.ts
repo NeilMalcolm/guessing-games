@@ -38,8 +38,8 @@ export enum Match {
 }
 
 
-export function getBadgeClassForMatch(match: Match) : string {
-    if (match === Match.Exact) return "badge badge-success";
+export function getBadgeClassForMatch(match: Match, success?: boolean) : string {
+    if (match === Match.Exact) return success ? "badge bg-neutral/15 border-transparent text-neutral/80" : "badge badge-success";
     if (match === Match.HigherClose || match === Match.LowerClose) return "badge badge-warning";
 
     return "badge badge-neutral";

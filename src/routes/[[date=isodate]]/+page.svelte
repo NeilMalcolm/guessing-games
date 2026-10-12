@@ -150,7 +150,9 @@
                 <ul>
                     {#each guesses as guess, index (guess.title)}
                     <li>
-                        <Guess {guess} index={guesses.length - index} animate={index == newestGuessNumber}/>
+                        <Guess {guess} 
+							   index={guesses.length - index} 
+							   animate={index == newestGuessNumber}/>
                     </li>
                     {/each}
                 </ul>
@@ -159,7 +161,9 @@
     </div>
 </main>
 
+
+<!-- 
 <ResultsModal bind:open={showResults}
               {guesses}
               won={gameStatus === 'won'}
-              playDate={data.playDate} />
+              playDate={data.playDate} /> -->
