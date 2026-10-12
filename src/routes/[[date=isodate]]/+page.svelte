@@ -3,6 +3,7 @@
 	import type { SearchResponse, SearchResult } from '../movies/search/+server';
 	import SearchItem from '$lib/components/+SearchItem.svelte';
 	import Guess from '$lib/components/+Guess.svelte';
+	import ResultsModal from '$lib/components/+ResultsModal.svelte';
 	import type { GameSessionClientResponse, GuessResponse } from '$lib/types/guess';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
@@ -14,6 +15,7 @@
 	let gameStatus: string = $derived(data.gameStatus);
 	let isGameFinished: boolean = $derived(gameStatus !== 'in_progress');
 	let newestGuessNumber: Number = $state(-1);
+	let showResults = $state(false);
 	
 	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
 
@@ -99,6 +101,9 @@
 		newestGuessNumber = 0;
         guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
+
+		// the game just ended, show the results.
+		showResults = sessionData.gameStatus !== 'in_progress';
 	}; 
 
 </script>
@@ -130,6 +135,18 @@
                 </ul>
                 {/if}
             </div>
+            {#if isGameFinished}
+                {@const won = gameStatus === 'won'}
+                <div class="flex flex-col items-center gap-3 mt-4">
+                    <p class="text-lg font-semibold text-center">
+                        {won ? 'Well done, you guessed right!' : 'Sorry, better luck next time'}
+                    </p>
+                    <button class="btn btn-soft {won ? 'btn-success' : 'btn-error'}"
+                            onclick={() => (showResults = true)}>
+                        View Results
+                    </button>
+                </div>
+            {/if}
             <div class="mt-2">
                 <ul>
                     {#each guesses as guess, index (guess.title)}
@@ -142,3 +159,8 @@
         </div>
     </div>
 </main>
+
+<ResultsModal bind:open={showResults}
+              {guesses}
+              won={gameStatus === 'won'}
+              playDate={data.playDate} />
