@@ -28,15 +28,13 @@
 </script>
 
 <div
-	class={`${props.class ?? ''} ${animate ? 'animate-(--animate-flip-in)' : ''} [backface-visibility:hidden] flex flex-col items-center pt-2 pb-2 pl-9 pr-9 justify-center rounded-md ` +
+	class={`${props.class ?? ''} ${animate ? 'animate-(--animate-flip-in)' : ''} [backface-visibility:hidden] flex flex-col items-center pt-2 pb-2 pl-9 pr-9 justify-center rounded-md transition-colors duration-500 ` +
 		getBgForMatch(propertyResult.match, success)}
 	style={computedStyle}
-	{title}
->
+	{title}>
 	<div
 		class={'uppercase text-xs font-semibold opacity-60 opacity-70 mb-1 ' +
-			getTextColorForMatch(propertyResult.match)}
-	>
+			getTextColorForMatch(propertyResult.match)}>
 		{title}
 	</div>
 	<div class={'text-xl opacity-90 font-semibold ' + getTextColorForMatch(propertyResult.match)}>
