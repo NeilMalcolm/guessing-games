@@ -4,10 +4,15 @@ import { json, error as jsonError } from "@sveltejs/kit";
 import type { Movie, GameSessionResponse, GameSessionStatus, DailyMovieWithDetails } from "$lib/types/supabasetables";
 import { dailyMoviesTable, guessTable, gamesSessionTable } from "$lib/types/supabasetables";
 import { mapGameSessionToClientResponse } from "$lib/utils/gameLogic";
+import { isIsoDate } from "$lib/utils/playDate";
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-    const today = new Date().toISOString().split('T')[0]; 
-    const { guessedMovieId } = await request.json();
+    const today = new Date().toISOString().split('T')[0];
+    const { guessedMovieId, date } = await request.json();
+    const playDate: string = date ?? today;
+    if (!isIsoDate(playDate) || playDate > today) {
+      return jsonError(400, "Invalid date");
+    }
 
     // get today's movie
     console.log(`guessed movie ${guessedMovieId}`);
@@ -32,7 +37,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
               certifications
             )
         `)
-        .eq('play_date', today)
+        .eq('play_date', playDate)
         .single<DailyMovieWithDetails>();
 
     const dailyMovie = dailyData?.movie;
@@ -213,7 +218,7 @@ async function addGuessToDatabase(
   }
 
   if (newStatus !== gameSession.status) {
-    const { error: updateError } = await locals.supabase
+    const { error: updateError } = await supabaseAdmin
       .from(gamesSessionTable)
       .update({
         status: newStatus,
