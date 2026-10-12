@@ -59,7 +59,7 @@ export function generateGuessResponse(
   // 4. director matches
   const directorResult: any = {
     value: formatName(guessMovie.director),
-    image: `${PUBLIC_TMDB_THUMB_URL}${guessMovie.director_profile_path}`,
+    image: guessMovie.director_profile_path ? `${PUBLIC_TMDB_THUMB_URL}${guessMovie.director_profile_path}` : null,
     match: targetMovie.director === guessMovie.director ? Match.Exact : Match.None
   };
 
@@ -68,7 +68,7 @@ export function generateGuessResponse(
   const targetCastIds = new Set((targetMovie.cast_members ?? []).map(c => c.id));
   const castMembersResult = (guessMovie.cast_members ?? []).slice(0, CAST_MEMBER_DISPLAY_COUNT).map(cast => ({
     value: formatName(cast.name),
-    image: `${PUBLIC_TMDB_THUMB_URL}${cast.profile_path}`,
+    image: cast.profile_path ? `${PUBLIC_TMDB_THUMB_URL}${cast.profile_path}` : null,
     match: (targetCastIds.has(cast.id) || targetCastNames.includes(cast.name.toLowerCase()))
       ? Match.Exact
       : Match.None
