@@ -1,11 +1,11 @@
 <script lang="ts">
     import { debounce } from '$lib/utils/debounce';
-	import type { HTMLLabelAttributes } from 'svelte/elements';
+	import type { HTMLInputAttributes } from 'svelte/elements';
 
     let defaultMinCharacterForSearch = 3;
     let searchBar: HTMLInputElement;
 
-    interface SearchBarParams extends HTMLLabelAttributes {
+    interface SearchBarParams extends HTMLInputAttributes {
         value?: string;
         onSearch: (query: string) => void; 
         onClear: () => void;
@@ -25,7 +25,7 @@
         debounceTime = 300,
         enabled = true,
         ...props
-    } = $props();
+    }: SearchBarParams = $props();
 
     // svelte-ignore state_referenced_locally
     const debouncedSearch = debounce(() => {
@@ -55,7 +55,7 @@
 
 
 </script>
-<div {...props}>
+<div class="flex flex-1">
     <label class="input flex-1">
         <svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
             <g stroke-linejoin="round"
@@ -68,6 +68,7 @@
             </g>
         </svg>
         <input name="search" 
+            {...props}
             type="search"
             bind:value={value}
             bind:this={searchBar}

@@ -11,7 +11,7 @@
 
 	let searchQuery = $state('');
 	let searchResults: SearchResponse | null = $state(null);
-	let gameStatus = $derived(data.gameStatus);
+	let gameStatus: string = $derived(data.gameStatus);
 	let isGameFinished: boolean = $derived(gameStatus !== 'in_progress');
 	let newestGuessNumber: Number = $state(-1);
 	
@@ -27,6 +27,12 @@
 	 * @param searchTerm
 	 */
 	async function onSearch(searchTerm: String) {
+		if (isGameFinished) {
+            console.log('game is finished');
+			return;
+		}
+
+		console.log(`searching ${searchTerm}`);
 		const response = await fetch(`/movies/search?title=${searchTerm}`);
 
 		if (!response.ok) {
@@ -50,6 +56,11 @@
 	 * @param guess the search result being guessed.
 	 */
 	async function onResultClicked(guess: SearchResult) {
+		if (isGameFinished) {
+            console.log('game is finished');
+			return;
+		}
+
 		onClear();
 		
 		await makeGuess(guess);
@@ -99,9 +110,10 @@
                     <Searchbar bind:value={searchQuery}
                                {onSearch}
                                {onClear}
-                               minCharacters={2} 
-                               class="flex flex-1"/>
-                    <button class="btn btn-outline btn-warning w-24">
+                               minCharacters={2}
+							   disabled={isGameFinished}/>
+                    <button class="btn btn-outline btn-warning w-24"
+							disabled={isGameFinished}>
                         Give Up
                     </button>
                 </div>
@@ -119,9 +131,9 @@
             </div>
             <div class="mt-2">
                 <ul>
-                    {#each guesses as guess, index}
+                    {#each guesses as guess, index (guess.title)}
                     <li>
-                        <Guess {guess} index={guesses.length - index} animate={index === newestGuessNumber}/>
+                        <Guess {guess} index={guesses.length - index} animate={index == newestGuessNumber}/>
                     </li>
                     {/each}
                 </ul>

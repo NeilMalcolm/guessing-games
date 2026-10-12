@@ -213,7 +213,7 @@ async function addGuessToDatabase(
   }
 
   if (newStatus !== gameSession.status) {
-    const { error: updateError } = await locals.supabase
+    const { error: updateError } = await supabaseAdmin
       .from(gamesSessionTable)
       .update({
         status: newStatus,

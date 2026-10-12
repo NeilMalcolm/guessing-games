@@ -46,6 +46,7 @@ export const load: PageServerLoad = async ({ locals }) => {
     }
 
     // 3. Get game session
+    console.log(`find session for ${user.id}, movie=${dailyMovie.id}`);
     const { data: gameSessionData } = await supabaseAdmin
         .from(gamesSessionTable)
         .select(`
@@ -88,6 +89,7 @@ export const load: PageServerLoad = async ({ locals }) => {
         return { guesses: [], gameStatus: 'in_progress' };
     }
 
+    console.log(`${gameSessionData.status}`);
     return mapGameSessionToClientResponse(gameSessionData, dailyMovie);
 };
 
