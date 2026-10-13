@@ -42,7 +42,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
               box_office,
               rating,
               min_age,
-              certifications
+              certifications,
+              video
             )
         `)
         .eq('play_date', playDate)

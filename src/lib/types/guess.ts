@@ -17,6 +17,12 @@ export interface GuessResponse {
 export interface GameSessionClientResponse {
   guesses: GuessResponse[];
   gameStatus: GameSessionStatus;
+  targetMovie?: TargetMovie | null
+}
+
+export interface TargetMovie { 
+  title: string,
+  videoUrl: string
 }
 
 export interface PropertyResult {
@@ -25,7 +31,7 @@ export interface PropertyResult {
 }
 
 export interface CastPropertyResult extends PropertyResult { 
-  image: string
+  image: string | null
 }
 
 export enum Match {

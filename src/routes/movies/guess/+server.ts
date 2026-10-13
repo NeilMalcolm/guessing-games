@@ -34,7 +34,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
               box_office,
               rating,
               min_age,
-              certifications
+              certifications,
+              video
             )
         `)
         .eq('play_date', playDate)

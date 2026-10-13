@@ -155,8 +155,17 @@ export function mapGameSessionToClientResponse(
     })
     .filter(Boolean) as GuessResponse[];
 
+  let targetMovie = gameSession.status === 'in_progress'
+    ? null
+    : {
+      title: dailyMovie.title,
+      videoUrl: `https://www.youtube.com/embed/${dailyMovie.video}`
+    }; 
+
+    console.log(targetMovie?.videoUrl);
   return {
     guesses: mappedGuesses,
-    gameStatus: gameSession.status
+    gameStatus: gameSession.status,
+    targetMovie: targetMovie
   };
 }
