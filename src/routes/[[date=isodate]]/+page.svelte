@@ -4,7 +4,7 @@
 	import SearchItem from '$lib/components/+SearchItem.svelte';
 	import Guess from '$lib/components/+Guess.svelte';
 	import ResultsModal from '$lib/components/+ResultsModal.svelte';
-	import type { GameSessionClientResponse, GuessResponse } from '$lib/types/guess';
+	import type { GameSessionClientResponse, GuessResponse, TargetMovie } from '$lib/types/guess';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
 
@@ -19,10 +19,12 @@
 	let showViewResults = $state(untrack(() => data.gameStatus !== 'in_progress'));
 
 	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
+	let targetMovie: TargetMovie | null | undefined = $state(null);
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
 		gameStatus = data.gameStatus ?? 'in_progress';
+		targetMovie = data.targetMovie;
 		showViewResults = data.gameStatus !== 'in_progress';
 	});
 
@@ -109,7 +111,8 @@
 		newestGuessNumber = 0;
 		guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
-
+		targetMovie = sessionData.targetMovie;	
+		console.log(sessionData.targetMovie);
 		showViewResults = sessionData.gameStatus === 'lost';
 	}
 </script>
@@ -178,6 +181,7 @@
 <ResultsModal
 	bind:open={showResults}
 	{guesses}
+	{targetMovie}
 	won={gameStatus === 'won'}
 	playDate={data.playDate}
 />

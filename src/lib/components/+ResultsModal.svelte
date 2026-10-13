@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { GuessResponse } from '$lib/types/guess';
+	import type { GuessResponse, TargetMovie } from '$lib/types/guess';
 	import { formatShareText, getResultRows } from '$lib/utils/resultSquares';
 
 	const copyResultsTimeoutMs: number = 2000;
@@ -9,9 +9,10 @@
 		guesses: GuessResponse[];
 		won: boolean;
 		playDate: string;
+		targetMovie: TargetMovie | null | undefined
 	}
 
-	let { open = $bindable(false), guesses, won, playDate }: ResultsModalProps = $props();
+	let { open = $bindable(false), guesses, won, playDate, targetMovie }: ResultsModalProps = $props();
 
 	let dialog: HTMLDialogElement | undefined = $state();
 	let copied = $state(false);
@@ -45,6 +46,17 @@
 				</li>
 			{/each}
 		</ol>
+
+		<span>{targetMovie?.title}</span>
+
+		<iframe width="369" 
+				height="208" 
+				src={targetMovie?.videoUrl} 
+				title="Embed videos and playlists" 
+				frameborder="0" 
+				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+				referrerpolicy="strict-origin-when-cross-origin" 
+				allowfullscreen></iframe>
 
 		<div class="modal-action justify-center">
 			<button class="btn btn-primary" onclick={copyResults}>
