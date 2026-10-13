@@ -38,6 +38,66 @@ describe('POST /movies/guess date handling', () => {
 		await expect(post({ guessedMovieId: 1, date })).rejects.toMatchObject({ status: 400 });
 		expect(supabaseAdmin.from).not.toHaveBeenCalled();
 	});
+
+	it('rejects with 403 if game session belongs to a different user', async () => {
+		const mockEvent: any = {
+			request: { json: async () => ({ guessedMovieId: 10, date: '2026-10-12' }) },
+			locals: {
+				safeGetSession: vi.fn().mockResolvedValue({
+					user: { id: 'user-1' },
+					session: { user: { id: 'user-1' } }
+				})
+			}
+		};
+
+		vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
+			if (table === 'daily_movies') {
+				return {
+					select: () => ({
+						eq: () => ({
+							single: async () => ({ data: { movie: { id: 99 } } })
+						})
+					})
+				} as any;
+			}
+			if (table === 'movies') {
+				return {
+					select: () => ({
+						eq: () => ({
+							single: async () => ({ data: { id: 10, title: 'Guessed Movie' } })
+						})
+					})
+				} as any;
+			}
+			if (table === 'game_sessions') {
+				return {
+					select: () => ({
+						eq: () => ({
+							eq: () => ({
+								// Return session that belongs to someone else
+								maybeSingle: async () => ({
+									data: {
+										id: 'session-123',
+										user_id: 'different-user',
+										target_movie_id: 99,
+										status: 'in_progress',
+										max_attempts: 6,
+										guesses: []
+									}
+								})
+							})
+						})
+					})
+				} as any;
+			}
+			return {} as any;
+		});
+
+		await expect(POST(mockEvent)).rejects.toMatchObject({
+			status: 403,
+			body: { message: expect.stringContaining('does not belong to authenticated user') }
+		});
+	});
 });
 
 

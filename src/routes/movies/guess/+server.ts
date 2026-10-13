@@ -172,6 +172,11 @@ async function addGuessToDatabase(
     throw jsonError(500, "Game session is null after initialization");
   }
 
+  // Ensure game session belongs to the authenticated user
+  if (gameSession.user_id !== user.id) {
+    throw jsonError(403, "Forbidden: Game session does not belong to authenticated user");
+  }
+
   // 2. check if we've already guessed this,
   if (gameSession.status !== 'in_progress') {
     throw jsonError(400, `Game session is already finished with status: ${gameSession.status}`);
@@ -225,7 +230,8 @@ async function addGuessToDatabase(
         status: newStatus,
         updated_at: new Date().toISOString()
       })
-      .eq('id', gameSession.id);
+      .eq('id', gameSession.id)
+      .eq('user_id', user.id);
 
     if (updateError) {
       console.error("Failed to update game session status:", updateError);
@@ -267,6 +273,7 @@ async function addGuessToDatabase(
         )
       `)
     .eq('id', gameSession.id)
+    .eq('user_id', user.id)
     .single<GameSessionResponse>();
 
   if (reloadError || !reloadedSession) {
