@@ -91,7 +91,11 @@ describe('+ResultsModal.svelte', () => {
 			open: true,
 			guesses,
 			won: true,
-			playDate: '2026-10-12'
+			playDate: '2026-10-12',
+			targetMovie: {
+				title: 'Interstellar',
+				videoUrl: 'https://www.youtube.com/embed/zSWdZVtXT7E'
+			}
 		});
 
 		const copyBtn = page.getByRole('button', { name: 'Copy results' });
@@ -101,6 +105,26 @@ describe('+ResultsModal.svelte', () => {
 			expect.stringContaining('Guessing Games 2026-10-12 - 1 guess')
 		);
 		await expect.element(page.getByRole('button', { name: 'Copied!' })).toBeInTheDocument();
+	});
+
+	it('renders movie title and video iframe when targetMovie is provided', async () => {
+		const guesses = [createGuess({ isCorrect: true, status: 'won' })];
+
+		render(ResultsModal, {
+			open: true,
+			guesses,
+			won: true,
+			playDate: '2026-10-12',
+			targetMovie: {
+				title: 'The Matrix',
+				videoUrl: 'https://www.youtube.com/embed/vKQi3bBA1y8'
+			}
+		});
+
+		await expect.element(page.getByText('The Matrix')).toBeInTheDocument();
+		const iframe = page.getByTitle('Embed videos and playlists');
+		await expect.element(iframe).toBeInTheDocument();
+		await expect.element(iframe).toHaveAttribute('src', 'https://www.youtube.com/embed/vKQi3bBA1y8');
 	});
 });
 

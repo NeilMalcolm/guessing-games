@@ -47,17 +47,19 @@
 			{/each}
 		</ol>
 
-		<span>{targetMovie?.title}</span>
+		{#if targetMovie}
+			<span>{targetMovie?.title}</span>
 
-		<iframe width="369" 
-				height="208" 
-				src={targetMovie?.videoUrl} 
-				title="Embed videos and playlists" 
-				frameborder="0" 
-				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-				referrerpolicy="strict-origin-when-cross-origin" 
-				allowfullscreen></iframe>
+			<iframe width="369" 
+					height="208" 
+					src={targetMovie?.videoUrl} 
+					title="Embed videos and playlists" 
+					frameborder="0" 
+					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+					referrerpolicy="strict-origin-when-cross-origin" 
+					allowfullscreen></iframe>
 
+		{/if}
 		<div class="modal-action justify-center">
 			<button class="btn btn-primary" onclick={copyResults}>
 				{copied ? 'Copied!' : 'Copy results'}
