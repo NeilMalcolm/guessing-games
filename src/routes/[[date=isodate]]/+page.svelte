@@ -40,11 +40,9 @@
 	 */
 	async function onSearch(searchTerm: String) {
 		if (isGameFinished) {
-			console.log('game is finished');
 			return;
 		}
 
-		console.log(`searching ${searchTerm}`);
 		const response = await fetch(`/movies/search?title=${searchTerm}`);
 
 		if (!response.ok) {
@@ -69,7 +67,6 @@
 	 */
 	async function onResultClicked(guess: SearchResult) {
 		if (isGameFinished) {
-			console.log('game is finished');
 			return;
 		}
 
@@ -86,7 +83,6 @@
 	 */
 	async function makeGuess(guess: SearchResult) {
 		if (isGameFinished) {
-			console.log('game is finished');
 			return;
 		}
 
