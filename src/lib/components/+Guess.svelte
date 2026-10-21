@@ -14,7 +14,7 @@
 		index: Number;
 		animate?: boolean;
 		delay?: number;
-		onSuccess?: () => void;
+		onRevealFinished?: () => void;
 	}
 
 	let { 
@@ -22,7 +22,7 @@
         index,
          animate = false, 
          delay, 
-         onSuccess, 
+         onRevealFinished, 
          ...props 
     }: GuessProps = $props();
 
@@ -129,7 +129,7 @@
 			timers.push(
 				setTimeout(() => {
 					isSuccessBg = true;
-					onSuccess?.();
+					onRevealFinished?.();
 				}, schedule.finalSuccessDelay)
 			);
 		}
