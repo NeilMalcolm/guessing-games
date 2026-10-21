@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-	import { getArrowForMatch, getBadgeClassForMatch, type GuessResponse } from '$lib/types/guess';
+	import { getBadgeClassForMatch, getTextColorForMatch, type GuessResponse } from '$lib/types/guess';
 	import DataMatch from './+DataMatch.svelte';
 	import Profile from './+Profile.svelte';
 	import { untrack } from 'svelte';
@@ -14,7 +14,7 @@
 		index: Number;
 		animate?: boolean;
 		delay?: number;
-		onSuccess?: () => void;
+		onRevealFinished?: () => void;
 	}
 
 	let { 
@@ -22,7 +22,7 @@
         index,
          animate = false, 
          delay, 
-         onSuccess, 
+         onRevealFinished, 
          ...props 
     }: GuessProps = $props();
 
@@ -129,7 +129,7 @@
 			timers.push(
 				setTimeout(() => {
 					isSuccessBg = true;
-					onSuccess?.();
+					onRevealFinished?.();
 				}, schedule.finalSuccessDelay)
 			);
 		}
@@ -143,7 +143,7 @@
 <div
 	class="card {isSuccessBg
 		? 'bg-success'
-		: 'bg-base-300'} transition-colors duration-500 shadow-md mb-3 overflow-hidden"
+		: 'bg-base-200'} transition-colors duration-500 shadow-md mb-3 overflow-hidden"
 	data-testid="guess-tile"
 >
 	<div>
@@ -168,7 +168,7 @@
 					<div class="flex flex-wrap gap-1 items-center mb-3" title="Genres">
 						{#each guess.genresResult as genreResult, i}
 							<span
-								class={`badge-s transition-all duration-500 ${revealedGenres[i] ? 'opacity-100' : 'opacity-0'} ${getBadgeClassForMatch(genreResult.match, isSuccessBg)}`}
+								class={`badge-s pl-4 pr-4 pt-3 pb-4 transition-all duration-500 ${revealedGenres[i] ? 'opacity-100' : 'opacity-0'} ${getTextColorForMatch(genreResult.match)} ${getBadgeClassForMatch(genreResult.match, isSuccessBg)}`}
 							>
 								{genreResult.value}
 							</span>

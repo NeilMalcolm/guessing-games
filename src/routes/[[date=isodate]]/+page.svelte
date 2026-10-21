@@ -28,7 +28,10 @@
 		showViewResults = data.gameStatus !== 'in_progress';
 	});
 
-	async function onGuessSuccess() {
+	/**
+	 * Triggers when a guess has finished being revealed.
+	*/
+	async function onGuessRevealed() {
 		showViewResults = true;
 
 		setTimeout(() => { showResults = true; }, 800);
@@ -108,8 +111,6 @@
 		guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
 		targetMovie = sessionData.targetMovie;	
-		console.log(sessionData.targetMovie);
-		showViewResults = sessionData.gameStatus === 'lost';
 	}
 </script>
 
@@ -150,8 +151,7 @@
 					</p>
 					<button
 						class="btn btn-soft {won ? 'btn-success' : 'btn-error'}"
-						onclick={() => (showResults = true)}
-					>
+						onclick={() => (showResults = true)}>
 						View Results
 					</button>
 				</div>
@@ -164,7 +164,7 @@
 								{guess}
 								index={guesses.length - index}
 								animate={index == newestGuessNumber}
-								onSuccess={onGuessSuccess}
+								onRevealFinished={onGuessRevealed}
 							/>
 						</li>
 					{/each}

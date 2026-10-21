@@ -3,6 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { invalidate } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import Header from "$lib/components/+Header.svelte";
 
 	let { data, children } = $props();
 	let { supabase, session } = $derived(data);
@@ -22,4 +23,8 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-{@render children()}
+<Header/>
+
+<section class="main">
+	{@render children()}
+</section>

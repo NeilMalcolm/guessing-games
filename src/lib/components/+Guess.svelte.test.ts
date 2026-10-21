@@ -44,7 +44,7 @@ describe('+Guess.svelte', () => {
 
 	it('renders high match values correctly', async () => {
 		render(Guess, { guess: getGuessResponseWithMatch(Match.Higher), index: 1 });
-		await assertMatchFields('bg-neutral', '↑');
+		await assertMatchFields('bg-base-300', '↑');
 	});
 
 	it('renders close-high match values correctly', async () => {
@@ -54,7 +54,7 @@ describe('+Guess.svelte', () => {
 
 	it('renders low match values correctly', async () => {
 		render(Guess, { guess: getGuessResponseWithMatch(Match.Lower), index: 3 });
-		await assertMatchFields('bg-neutral', '↓');
+		await assertMatchFields('bg-base-300', '↓');
 	});
 
 	it('renders close-low match values correctly', async () => {
@@ -154,7 +154,7 @@ describe('+Guess.svelte', () => {
 			render(Guess, { guess: getGuessResponseWithMatch(Match.Exact, false), index: 0 });
 
 			const tile = page.getByTestId('guess-tile');
-			await expect.element(tile).toHaveClass('bg-base-300');
+			await expect.element(tile).toHaveClass('bg-base-200');
 			await expect.element(tile).not.toHaveClass('bg-success');
 		});
 
@@ -167,7 +167,7 @@ describe('+Guess.svelte', () => {
 
 			const tile = page.getByTestId('guess-tile');
 			await expect.element(tile).toHaveClass('bg-success');
-			await expect.element(tile).not.toHaveClass('bg-base-300');
+			await expect.element(tile).not.toHaveClass('bg-base-200');
 		});
 
 		it('applies success background color on delay when guess is correct and animated', async () => {
@@ -180,7 +180,7 @@ describe('+Guess.svelte', () => {
 
 			const tile = page.getByTestId('guess-tile');
 			// Before the delay, the tile has the default background and not the success color
-			await expect.element(tile).toHaveClass('bg-base-300');
+			await expect.element(tile).toHaveClass('bg-base-200');
 			await expect.element(tile).not.toHaveClass('bg-success');
 
 			// Wait for delay to complete
@@ -188,7 +188,7 @@ describe('+Guess.svelte', () => {
 
 			// After delay, the tile has the success background color
 			await expect.element(tile).toHaveClass('bg-success');
-			await expect.element(tile).not.toHaveClass('bg-base-300');
+			await expect.element(tile).not.toHaveClass('bg-base-200');
 		});
 
 		it('does not apply success background color even after delay when guess is incorrect and animated', async () => {
@@ -200,12 +200,12 @@ describe('+Guess.svelte', () => {
 			});
 
 			const tile = page.getByTestId('guess-tile');
-			await expect.element(tile).toHaveClass('bg-base-300');
+			await expect.element(tile).toHaveClass('bg-base-200');
 			await expect.element(tile).not.toHaveClass('bg-success');
 
 			await new Promise((resolve) => setTimeout(resolve, 250));
 
-			await expect.element(tile).toHaveClass('bg-base-300');
+			await expect.element(tile).toHaveClass('bg-base-200');
 			await expect.element(tile).not.toHaveClass('bg-success');
 		});
 	});
@@ -268,35 +268,35 @@ describe('+Guess.svelte', () => {
 		});
 
 		it('invokes onSuccess callback when guess is correct and animation finishes', async () => {
-			const onSuccess = vi.fn();
+			const onRevealFinished = vi.fn();
 			render(Guess, {
 				guess: getGuessResponseWithMatch(Match.Exact, true),
 				index: 0,
 				animate: true,
 				delay: 200,
-				onSuccess
+				onRevealFinished
 			});
 
-			expect(onSuccess).not.toHaveBeenCalled();
+			expect(onRevealFinished).not.toHaveBeenCalled();
 
 			await new Promise((resolve) => setTimeout(resolve, 250));
 
-			expect(onSuccess).toHaveBeenCalledOnce();
+			expect(onRevealFinished).toHaveBeenCalledOnce();
 		});
 
 		it('does not invoke onSuccess callback when guess is incorrect', async () => {
-			const onSuccess = vi.fn();
+			const onRevealFinished = vi.fn();
 			render(Guess, {
 				guess: getGuessResponseWithMatch(Match.Exact, false),
 				index: 0,
 				animate: true,
 				delay: 200,
-				onSuccess
+				onRevealFinished
 			});
 
 			await new Promise((resolve) => setTimeout(resolve, 250));
 
-			expect(onSuccess).not.toHaveBeenCalled();
+			expect(onRevealFinished).not.toHaveBeenCalled();
 		});
 	});
 });
