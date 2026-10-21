@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ locals }) => {
               game_sessions ( status )
             )
         `)
-        .lte('play_date', today)
+        .lt('play_date', today)
         .order('play_date', { ascending: false });
 
     // No user means nothing played; the embedded sessions are then irrelevant.

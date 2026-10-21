@@ -11,6 +11,14 @@
 
     let filter = $state<(typeof filters)[number]['value']>('all');
 
+    // Play dates are UTC ISO dates (yyyy-MM-dd), so format/compare in UTC.
+    const dayMonthFormat = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    function formatPlayDate(playDate: string): string {
+        return playDate === yesterday ? 'Yesterday' : dayMonthFormat.format(new Date(playDate));
+    }
+
     // A day counts as played once the game is won or lost.
     const filteredDays = $derived(
         data.rerunDays.filter((day) => {
@@ -45,7 +53,7 @@
                             {/if}
                         </figure>
                         <div class="card-body items-center p-2 text-center">
-                            <time datetime={day.playDate} class="text-xs sm:text-sm">{day.playDate}</time>
+                            <time datetime={day.playDate} class="text-xs sm:text-sm">{formatPlayDate(day.playDate)}</time>
                         </div>
                     </a>
                 </li>
