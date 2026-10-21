@@ -48,7 +48,7 @@ export function getBadgeClassForMatch(match: Match, success?: boolean) : string 
     if (match === Match.Exact) return success ? "badge bg-neutral/15 border-transparent text-neutral/80" : "badge badge-success";
     if (match === Match.HigherClose || match === Match.LowerClose) return "badge badge-warning";
 
-    return "badge badge-neutral";
+    return "badge bg-base-300";
 }
 
 export function getArrowForMatch(match: Match) : string {
@@ -63,12 +63,12 @@ export function getTextColorForMatch(match: Match) : string {
     if (match === Match.Exact) return "text-neutral/80";
     if (match === Match.HigherClose || match === Match.LowerClose) return "text-orange-800";
 
-    return "text-white";
+    return "base-content";
 }
 
 export function getBgForMatch(match: Match, success?: boolean) : string {
     if (match === Match.Exact) return success ? "bg-neutral/15" : "bg-success";
     if (match === Match.HigherClose || match === Match.LowerClose) return "bg-warning";
 
-    return "bg-neutral";
+    return "bg-base-300";
 }
