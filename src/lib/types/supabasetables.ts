@@ -1,4 +1,8 @@
-export const dailyMoviesTable: string = 'daily_movies';
+import type { Database, Tables } from './database.types';
+
+type TableName = keyof Database['public']['Tables'];
+
+export const dailyMoviesTable = 'daily_movies' satisfies TableName;
 
 /**
  * Represents a cast member stored within a movie's cast_members payload.
@@ -11,74 +15,46 @@ export interface CastMember {
   profile_path: string | null;
 }
 
-export const moviesTable: string = 'movies';
+export const moviesTable = 'movies' satisfies TableName;
 /**
  * Represents a row in the `public.movies` table.
  * Stores cached movie details, ratings, cast, and comparison metrics from TMDB.
  */
-export interface Movie {
-  id: number;
-  title: string;
-  release_year: number | null;
-  poster_path: string | null;
-  genres: string[];
-  director: string | null;
-  director_profile_path: string | null;
-  popularity: number | null;
-  cast_members: CastMember[];
-  box_office: number | null;
-  rating: number | null;
+export type Movie = Omit<Tables<'movies'>, 'cast_members' | 'certifications' | 'vote_count' | 'video'> & {
   vote_count?: number | null;
-  min_age: number | null;
-  certifications: Record<string, string>;
   video?: string | null;
-  cached_at: string;
-}
+  cast_members: CastMember[];
+  certifications: Record<string, string>;
+};
 
 /**
  * Represents a daily movie challenge joined with its full movie record.
  * Used to fetch the target movie and any custom unlockable hints for a given play date.
  */
-export interface DailyMovieWithDetails {
-  play_date: string;
-  custom_hints: Record<string, any> | null;
+export type DailyMovieWithDetails = Pick<Tables<'daily_movies'>, 'play_date' | 'custom_hints'> & {
   movie: Movie; // The joined movie record
-}
+};
 
 /**
  * Allowed status states for a game session ('in_progress', 'won', or 'lost').
  */
 export type GameSessionStatus = 'in_progress' | 'won' | 'lost';
 
-export const gamesSessionTable: string = 'game_sessions';  
+export const gamesSessionTable = 'game_sessions' satisfies TableName;
 /**
  * Represents a row in the `public.game_sessions` table.
  * Tracks a player's daily game session for a specific target movie, attempt limit, and outcome status.
  */
-export interface GameSession {
-  id: string;
-  user_id: string;
-  target_movie_id: number;
+export type GameSession = Omit<Tables<'game_sessions'>, 'status'> & {
   status: GameSessionStatus;
-  max_attempts: number;
-  created_at: string;
-  updated_at: string;
-}
+};
 
-export const guessTable: string = 'guesses';  
+export const guessTable = 'guesses' satisfies TableName;
 /**
  * Represents a row in the `public.guesses` table.
  * Records each individual movie guess turn made during a game session and whether it was correct.
  */
-export interface Guess {
-  id: string;
-  game_id: string;
-  user_id: string;
-  guess_number: number;
-  movie_id: number;
-  is_correct: boolean;
-  created_at: string;
-}
+export type Guess = Tables<'guesses'>;
 
 /**
  * Represents an individual guess record with its joined movie details, as returned in a game session query.

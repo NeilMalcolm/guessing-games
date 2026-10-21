@@ -164,6 +164,7 @@ async function addGuessToDatabase(
 
     gameSession = {
       ...newSession,
+      status: newSession.status as GameSessionStatus, // DB column is plain text
       guesses: []
     };
   }
