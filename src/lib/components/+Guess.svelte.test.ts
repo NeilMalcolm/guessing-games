@@ -268,35 +268,35 @@ describe('+Guess.svelte', () => {
 		});
 
 		it('invokes onSuccess callback when guess is correct and animation finishes', async () => {
-			const onSuccess = vi.fn();
+			const onRevealFinished = vi.fn();
 			render(Guess, {
 				guess: getGuessResponseWithMatch(Match.Exact, true),
 				index: 0,
 				animate: true,
 				delay: 200,
-				onSuccess
+				onRevealFinished
 			});
 
-			expect(onSuccess).not.toHaveBeenCalled();
+			expect(onRevealFinished).not.toHaveBeenCalled();
 
 			await new Promise((resolve) => setTimeout(resolve, 250));
 
-			expect(onSuccess).toHaveBeenCalledOnce();
+			expect(onRevealFinished).toHaveBeenCalledOnce();
 		});
 
 		it('does not invoke onSuccess callback when guess is incorrect', async () => {
-			const onSuccess = vi.fn();
+			const onRevealFinished = vi.fn();
 			render(Guess, {
 				guess: getGuessResponseWithMatch(Match.Exact, false),
 				index: 0,
 				animate: true,
 				delay: 200,
-				onSuccess
+				onRevealFinished
 			});
 
 			await new Promise((resolve) => setTimeout(resolve, 250));
 
-			expect(onSuccess).not.toHaveBeenCalled();
+			expect(onRevealFinished).not.toHaveBeenCalled();
 		});
 	});
 });
