@@ -24,6 +24,7 @@
 </svelte:head>
 
 <Header/>
+
 <section class="main">
 	{@render children()}
 </section>

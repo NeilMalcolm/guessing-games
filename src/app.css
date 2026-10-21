@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @plugin "daisyui";
+@plugin "@tailwindcss/typography";
 
 @theme {
   /* 'both' applies the 0% frame during any animation-delay, so the card stays hidden until it flips */
