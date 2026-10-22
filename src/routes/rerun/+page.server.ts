@@ -3,10 +3,11 @@ import { error } from '@sveltejs/kit';
 import { PUBLIC_TMDB_THUMB_URL } from '$env/static/public';
 import { supabaseAdmin } from '$lib/supabaseAdmin';
 import { dailyMoviesTable, type GameSessionStatus } from '$lib/types/supabasetables';
+import { getOrCreateUser } from '$lib/server/gameSession';
 
 export const load: PageServerLoad = async ({ locals }) => {
     const today = new Date().toISOString().split('T')[0];
-    const { user } = await locals.safeGetSession();
+    const user = await getOrCreateUser(locals);
 
     // Get all daily movies (up to today) and, where it exists, the current
     // user's game session for each. Left join: unplayed dates still return.
