@@ -1,11 +1,13 @@
 <script lang="ts">
+	import type { Snippet } from "svelte";
+
     interface DialogProps {
-        id: string,
         title: string,
-        bodyText: string,
-        acceptText: string,
-        closeText: string,
-        show?: boolean;
+        bodyText?: string,
+        children?: Snippet,
+        acceptText?: string,
+        closeText?: string,
+        open?: boolean;
         acceptAction?: () => void,
         closeAction?: () => void
     }
@@ -13,9 +15,10 @@
     let { 
         title, 
         bodyText, 
+        children,
         acceptText = "OK", 
         closeText = "Close", 
-        show = $bindable(false),
+        open = $bindable(false),
         acceptAction, 
         closeAction
     }: DialogProps = $props();
@@ -24,24 +27,35 @@
 
     $effect(() => {
         if (!dialog) return;
-        if (show && !dialog.open) dialog.showModal();
-        else if (!show && dialog.open) dialog.close();
+        if (open && !dialog.open) dialog.showModal();
+        else if (!open && dialog.open) dialog.close();
     });
 </script>
 <dialog bind:this={dialog}
         onclose={() => {
-            show = false;
+            open = false;
         }}
         class="modal">
     <div class="modal-box">
-        <h3 class="text-lg font-bold">{title}</h3>
-        <p class="py-4">{bodyText}</p>
-        <div class="modal-action">
-        <button class="btn" onclick={() => acceptAction?.()}>{acceptText}</button>
-            <button class="btn" onclick={() => {
+        <h3 class="text-2xl font-bold mb-5">{title}</h3>
+            {#if children}
+                {@render children()}
+            {:else if bodyText}
+                <p class="py-4">{bodyText}</p>
+            {/if}
+        <div class="modal-action flex gap-2">
+            <button class="btn btn-error" onclick={() => {
+                dialog?.close();
+                acceptAction?.();
+            }}>
+                {acceptText}
+            </button>
+            <button class="btn btn-ghost" onclick={() => {
                 dialog?.close();
                 closeAction?.();
-            }}>{closeText}</button>
+            }}>
+                {closeText}
+            </button>
         </div>
     </div>
     <form method="dialog" class="modal-backdrop">

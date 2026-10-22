@@ -205,13 +205,16 @@
 							onclick={() => showGiveUpModal = true}>
 						Give Up
 					</button>
-					<Dialog id="giveUpModal"
-							title="Confirm Giving up"
-							bodyText="Are you sure you want to give up?"
+					<Dialog title="Give up on Guessing the Movie?"
+							
 							acceptText="Give Up" 
-							closeText="Keep Going"
+							closeText="Keep Guessing"
 							acceptAction={onGiveUp}
-							bind:show={showGiveUpModal}/>
+							bind:open={showGiveUpModal}>
+							<p class="text-base-content/60">Ready to admit defeat? This will end the game and reveal the movie. You won't be able to make any more guesses and this will count as a loss.</p> 
+							
+							<p class="text-base-content/60 mt-3">Are you sure you want to give up?</p>
+					</Dialog>
 				</div>
 
 				{#if showSearchDropdown && (isSearching || searchResults)}
