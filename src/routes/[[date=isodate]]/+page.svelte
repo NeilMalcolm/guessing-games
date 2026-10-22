@@ -7,6 +7,7 @@
 	import type { GameSessionClientResponse, GuessResponse, TargetMovie } from '$lib/types/guess';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
+	import Dialog from '$lib/components/+Dialog.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -23,6 +24,8 @@
 	let isSearching: boolean = $state(false);
 	let showSearchDropdown: boolean = $state(true);
 	let searchController: AbortController | null = null;
+
+	let showGiveUpModal: boolean = $state(false);
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
@@ -196,11 +199,19 @@
 						onFocus={onSearchBarFocus}
 						minCharacters={2}
 						class="text-md"
-						disabled={isGameFinished}
-					/>
-					<button class="btn btn-outline btn-warning w-24" disabled={isGameFinished || guesses.length < 1} onclick={onGiveUp}>
+						disabled={isGameFinished} />
+					<button class="btn btn-outline btn-warning w-24" 
+							disabled={isGameFinished || guesses.length < 1} 
+							onclick={() => showGiveUpModal = true}>
 						Give Up
 					</button>
+					<Dialog id="giveUpModal"
+							title="Confirm Giving up"
+							bodyText="Are you sure you want to give up?"
+							acceptText="Give Up" 
+							closeText="Keep Going"
+							acceptAction={onGiveUp}
+							bind:show={showGiveUpModal}/>
 				</div>
 
 				{#if showSearchDropdown && (isSearching || searchResults)}
