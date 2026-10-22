@@ -1,16 +1,17 @@
+export interface DebouncedFunction<T extends (...a: any[]) => void> {
+  (...args: Parameters<T>): void;
+  cancel: () => void;
+}
+
 export function debounce<T extends (...args: any[]) => void>(
-  callback: T,
+  callback: T, 
   delay: number
-): (...args: Parameters<T>) => void {
-  let timeoutId: ReturnType<typeof setTimeout>;
-
-  return (...args: Parameters<T>) => {
-    // Clear the previous timer if the user types again before the delay finishes
+): DebouncedFunction<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const debounced = (...args: Parameters<T>) => {
     clearTimeout(timeoutId);
-
-    // Set a new timer
-    timeoutId = setTimeout(() => {
-      callback(...args);
-    }, delay);
+    timeoutId = setTimeout(() => callback(...args), delay);
   };
+  debounced.cancel = () => clearTimeout(timeoutId);
+  return debounced;
 }

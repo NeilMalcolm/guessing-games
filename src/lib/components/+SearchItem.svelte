@@ -14,13 +14,14 @@
 </script>
 
 <button class="flex w-full items-center gap-4 p-4 text-left cursor-pointer hover:bg-base-200" onclick={() => onResultClicked(searchResult)}>
-    <div>
+    <div class="w-16 shrink-0 aspect-2/3 rounded-md bg-base-300 overflow-hidden">
         {#if searchResult.imagePath}
-            <img class="w-s rounded-md" 
-                src={searchResult.imagePath} 
+            <img class="size-full object-cover"
+                
+                src={searchResult.imagePath}
                 alt={`Poster for ${searchResult.title}`}/>
         {/if}
-    </div> 
+    </div>
     <div>     
         <div class="text-lg font-semibold opacity-60">{searchResult.title}</div>
     </div>
