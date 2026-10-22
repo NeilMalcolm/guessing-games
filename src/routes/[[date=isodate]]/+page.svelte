@@ -132,6 +132,39 @@
 	}
 
 	/**
+	 * Gives up the current game session.
+	 */
+	async function onGiveUp() {
+		if (isGameFinished) {
+			return;
+		}
+
+		onClear();
+
+		const response = await fetch('/movies/give-up', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				date: data.playDate
+			})
+		});
+
+		if (!response.ok) {
+			console.error('Failed to give up');
+			return;
+		}
+
+		const sessionData: GameSessionClientResponse = await response.json();
+		guesses = sessionData.guesses;
+		gameStatus = sessionData.gameStatus;
+		targetMovie = sessionData.targetMovie;
+		showViewResults = true;
+		showResults = true;
+	}
+
+	/**
 	 * Cancels any searches, hides results when the search bar is unfocused.
 	 */
 	function onSearchBarBlur(): void {  
@@ -165,7 +198,7 @@
 						class="text-md"
 						disabled={isGameFinished}
 					/>
-					<button class="btn btn-outline btn-warning w-24" disabled={isGameFinished}>
+					<button class="btn btn-outline btn-warning w-24" disabled={isGameFinished} onclick={onGiveUp}>
 						Give Up
 					</button>
 				</div>

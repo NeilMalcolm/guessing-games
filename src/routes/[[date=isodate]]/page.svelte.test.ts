@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import Page from './+page.svelte';
 import type { PageData } from './$types';
-import { Match, type GuessResponse, type PropertyResult } from '$lib/types/guess';
+import { Match, type GuessResponse, type PropertyResult, type GameSessionClientResponse } from '$lib/types/guess';
 
 const prop = (match: Match): PropertyResult => ({ value: 'test', match });
 
@@ -37,6 +37,10 @@ function createPageData(overrides: Partial<PageData>): PageData {
 }
 
 describe('+page.svelte game over states', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	it('shows success message and soft success button when game is won', async () => {
 		render(Page, {
 			data: createPageData({
@@ -131,6 +135,38 @@ describe('+page.svelte game over states', () => {
 		// Modal should display win title and copy button
 		await expect.element(page.getByText('You got it!')).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Copy results' })).toBeInTheDocument();
+	});
+
+	it('calls /movies/give-up when Give Up button is clicked and displays game over state', async () => {
+		const giveUpResponse: GameSessionClientResponse = {
+			guesses: [],
+			gameStatus: 'gave_up',
+			targetMovie: { title: 'The Matrix', videoUrl: 'https://www.youtube.com/embed/m8e-679Chvg' }
+		};
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+			if (String(url) === '/movies/give-up') {
+				return new Response(JSON.stringify(giveUpResponse), { status: 200 });
+			}
+			return new Response(JSON.stringify({ ok: true }), { status: 200 });
+		});
+
+		render(Page, {
+			data: createPageData({
+				guesses: [],
+				gameStatus: 'in_progress'
+			})
+		});
+
+		const giveUpBtn = page.getByRole('button', { name: 'Give Up' });
+		await giveUpBtn.click();
+
+		// Failure message must be visible
+		await expect.element(page.getByText('Sorry, better luck next time')).toBeInTheDocument();
+
+		// Modal should display target movie
+		await expect.element(page.getByRole('heading', { name: 'Better luck next time' })).toBeInTheDocument();
+		await expect.element(page.getByText('The Matrix')).toBeInTheDocument();
 	});
 });
 
