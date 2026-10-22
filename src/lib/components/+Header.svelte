@@ -1,19 +1,13 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { afterNavigate } from '$app/navigation';
+    import ThemeModeToggle from '$lib/components/+ThemeModeToggle.svelte';
 
-    let lightMode: boolean = $state(false);
+    let drawerOpen: boolean = $state(false);
 
-    // Sync the toggle with whatever the inline script in app.html already applied
-    onMount(() => {
-        lightMode = document.documentElement.getAttribute('data-theme') === 'light';
+    // Close the drawer whenever a navigation completes
+    afterNavigate(() => {
+        drawerOpen = false;
     });
-
-    function onLightDarkModeToggled(): void {
-        lightMode = !lightMode;
-        const theme = lightMode ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
-    }
 </script>
 <div class="navbar bg-base-100 shadow-sm">
 
@@ -28,16 +22,22 @@
   <a class="link link-hover text-xl font-semibold flex-1" href="/">Guessing Game</a>
 
    <div class="flex-none">
-    <span class="mr-2">{lightMode ? "Light" : "Dark"} Mode</span>
-    <input type="checkbox" checked={lightMode} onchange={onLightDarkModeToggled} class="toggle" />
+    <ThemeModeToggle />
   </div>
 </div>
 
 <div class="drawer">
-  <input id="page-drawer" type="checkbox" class="drawer-toggle" />
+  <input id="page-drawer" type="checkbox" class="drawer-toggle" bind:checked={drawerOpen} />
   <div class="drawer-side">
     <label for="page-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
     <ul class="menu bg-base-200 min-h-full w-80 p-4">
+        <li>
+            <a href="/">
+                <div>
+                    <h1 class="prose prose-xl">Home</h1>
+                </div>
+            </a>
+        </li>
         <li>
             <a href="/rerun">
                 <div>
