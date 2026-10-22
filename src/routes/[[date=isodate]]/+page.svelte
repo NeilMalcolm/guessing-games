@@ -198,7 +198,7 @@
 						class="text-md"
 						disabled={isGameFinished}
 					/>
-					<button class="btn btn-outline btn-warning w-24" disabled={isGameFinished} onclick={onGiveUp}>
+					<button class="btn btn-outline btn-warning w-24" disabled={isGameFinished || guesses.length < 1} onclick={onGiveUp}>
 						Give Up
 					</button>
 				</div>
