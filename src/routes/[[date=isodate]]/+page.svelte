@@ -151,8 +151,8 @@
 </script>
 
 <main>
-	<div class="flex justify-center-safe">
-		<div>
+	<div class="flex justify-center">
+		<div class="w-full px-[15px] sm:max-w-xl md:max-w-2xl">
 			<div class="dropdown dropdown-bottom dropdown-open flex mt-2">
 				<div class="flex flex-1 gap-3">
 					<Searchbar
