@@ -1,5 +1,5 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import Page from './+page.svelte';
 import type { PageData } from './$types';
@@ -131,5 +131,109 @@ describe('+page.svelte game over states', () => {
 		// Modal should display win title and copy button
 		await expect.element(page.getByText('You got it!')).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Copy results' })).toBeInTheDocument();
+	});
+});
+
+describe('+page.svelte search bar focus and blur', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	const results = [
+		{ id: 1, title: 'Dune', imagePath: null },
+		{ id: 2, title: 'Dunkirk', imagePath: null }
+	];
+
+	function mockSearchFetch() {
+		return vi
+			.spyOn(globalThis, 'fetch')
+			.mockImplementation(
+				async () => new Response(JSON.stringify({ ok: true, results }), { status: 200 })
+			);
+	}
+
+	async function searchFor(term: string) {
+		const searchInput = page.getByPlaceholder('Search...');
+		await searchInput.fill(term);
+		return searchInput;
+	}
+
+	it('shows search results while the search bar is focused', async () => {
+		mockSearchFetch();
+		render(Page, { data: createPageData({}) });
+
+		await searchFor('du');
+
+		await expect.element(page.getByText('Dune', { exact: true })).toBeInTheDocument();
+		await expect.element(page.getByText('Dunkirk', { exact: true })).toBeInTheDocument();
+	});
+
+	it('hides the search results when the search bar loses focus', async () => {
+		mockSearchFetch();
+		render(Page, { data: createPageData({}) });
+
+		const searchInput = await searchFor('du');
+		await expect.element(page.getByText('Dune', { exact: true })).toBeInTheDocument();
+
+		(searchInput.element() as HTMLInputElement).blur();
+
+		await expect.element(page.getByText('Dune', { exact: true })).not.toBeInTheDocument();
+		await expect.element(page.getByText('Dunkirk', { exact: true })).not.toBeInTheDocument();
+	});
+
+	it('shows the previously retrieved results again when the search bar is re-focused', async () => {
+		const fetchSpy = mockSearchFetch();
+		render(Page, { data: createPageData({}) });
+
+		const searchInput = await searchFor('du');
+		await expect.element(page.getByText('Dune', { exact: true })).toBeInTheDocument();
+		(searchInput.element() as HTMLInputElement).blur();
+		await expect.element(page.getByText('Dune', { exact: true })).not.toBeInTheDocument();
+		const callsBeforeRefocus = fetchSpy.mock.calls.length;
+
+		await searchInput.click();
+
+		await expect.element(page.getByText('Dune', { exact: true })).toBeInTheDocument();
+		// re-focusing must reuse the earlier results rather than searching again
+		expect(fetchSpy.mock.calls.length).toBe(callsBeforeRefocus);
+	});
+
+	it('aborts an in-flight search and hides the loading state on blur', async () => {
+		let abortedSignal: AbortSignal | undefined;
+		vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+			abortedSignal = init?.signal as AbortSignal;
+			// never resolves unless aborted
+			return new Promise((_resolve, reject) => {
+				abortedSignal!.addEventListener('abort', () =>
+					reject(new DOMException('Aborted', 'AbortError'))
+				);
+			});
+		});
+		render(Page, { data: createPageData({}) });
+
+		const searchInput = await searchFor('du');
+		await expect
+			.element(page.getByText('Thumbing through film reels...'))
+			.toBeInTheDocument();
+
+		(searchInput.element() as HTMLInputElement).blur();
+
+		await expect
+			.element(page.getByText('Thumbing through film reels...'))
+			.not.toBeInTheDocument();
+		expect(abortedSignal?.aborted).toBe(true);
+	});
+
+	it('cancels a pending debounced search when blurred before it fires', async () => {
+		const fetchSpy = mockSearchFetch();
+		render(Page, { data: createPageData({}) });
+
+		const searchInput = await searchFor('du');
+		(searchInput.element() as HTMLInputElement).blur();
+
+		// wait longer than the searchbar's default 300ms debounce
+		await new Promise((resolve) => setTimeout(resolve, 500));
+
+		expect(fetchSpy).not.toHaveBeenCalled();
 	});
 });
