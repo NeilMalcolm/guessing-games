@@ -8,9 +8,29 @@ export const load: PageServerLoad = async ({ locals }) => {
     const today = new Date().toISOString().split('T')[0];
     const { user } = await locals.safeGetSession();
 
+    // When there is no user session, they have no game sessions.
+    // Query daily movies without joining game session data.
+    if (!user) {
+        const { data, error: dbError } = await supabaseAdmin
+            .from(dailyMoviesTable)
+            .select('play_date')
+            .lt('play_date', today)
+            .order('play_date', { ascending: false });
+
+        if (dbError) error(500, dbError.message);
+
+        return {
+            rerunDays: (data ?? []).map(({ play_date }) => ({
+                playDate: play_date,
+                status: null,
+                poster: null
+            }))
+        };
+    }
+
     // Get all daily movies (up to today) and, where it exists, the current
     // user's game session for each. Left join: unplayed dates still return.
-    let query = supabaseAdmin
+    const { data, error: dbError } = await supabaseAdmin
         .from(dailyMoviesTable)
         .select(`
             play_date,
@@ -20,12 +40,9 @@ export const load: PageServerLoad = async ({ locals }) => {
             )
         `)
         .lt('play_date', today)
-        .order('play_date', { ascending: false });
+        .order('play_date', { ascending: false })
+        .eq('movie.game_sessions.user_id', user.id);
 
-    // No user means nothing played; the embedded sessions are then irrelevant.
-    query = query.eq('movie.game_sessions.user_id', user?.id ?? '');
-
-    const { data, error: dbError } = await query;
     if (dbError) error(500, dbError.message);
 
     // Only reveal the poster once the game is finished (won/lost/gave_up), otherwise
