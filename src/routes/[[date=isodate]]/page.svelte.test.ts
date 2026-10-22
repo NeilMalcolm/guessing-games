@@ -100,7 +100,7 @@ describe('+page.svelte game over states', () => {
 	it('does not show end state message or View Results button when game is in progress', async () => {
 		render(Page, {
 			data: createPageData({
-				guesses: [],
+				guesses: [createMockGuess(false)],
 				gameStatus: 'in_progress'
 			})
 		});
@@ -153,13 +153,17 @@ describe('+page.svelte game over states', () => {
 
 		render(Page, {
 			data: createPageData({
-				guesses: [],
+				guesses: [createMockGuess(false)],
 				gameStatus: 'in_progress'
 			})
 		});
 
 		const giveUpBtn = page.getByRole('button', { name: 'Give Up' });
 		await giveUpBtn.click();
+
+		// Confirm giving up in the dialog
+		const confirmBtn = page.getByRole('dialog').getByRole('button', { name: 'Give Up' });
+		await confirmBtn.click();
 
 		// Failure message must be visible
 		await expect.element(page.getByText('Sorry, better luck next time')).toBeInTheDocument();
