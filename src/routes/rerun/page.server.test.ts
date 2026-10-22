@@ -55,10 +55,14 @@ describe('rerun +page.server load', () => {
 		expect(query.eq).toHaveBeenCalledWith('movie.game_sessions.user_id', 'user-1');
 	});
 
-	it('uses an empty user id when logged out', async () => {
-		const query = mockQuery({ data: [] });
-		await runLoad(null);
-		expect(query.eq).toHaveBeenCalledWith('movie.game_sessions.user_id', '');
+	it('does not query game sessions when logged out', async () => {
+		const query = mockQuery({ data: [{ play_date: '2026-10-11' }] });
+		const result = await runLoad(null);
+		expect(query.select).toHaveBeenCalledWith('play_date');
+		expect(query.eq).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			rerunDays: [{ playDate: '2026-10-11', status: null, poster: null }]
+		});
 	});
 
 	it('throws a 500 when the query fails', async () => {
@@ -105,4 +109,3 @@ describe('rerun +page.server load', () => {
 		expect(rerunDays[0].status).toBe('won');
 	});
 });
-
