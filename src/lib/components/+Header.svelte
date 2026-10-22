@@ -9,7 +9,7 @@
         drawerOpen = false;
     });
 </script>
-<div class="navbar bg-base-100 shadow-sm">
+<div class="navbar bg-base-100">
 
   <div class="flex-none">
     <label for="page-drawer" class="btn btn-square btn-ghost" aria-label="Hamburger Menu">

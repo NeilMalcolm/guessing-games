@@ -7,9 +7,9 @@
     }
 </script>
 
-<button type="button"
-        class="btn btn-square btn-ghost swap swap-rotate in-data-[theme=light]:swap-active"
-        aria-label="Toggle light/dark mode"
+<button type="button" 
+        class="swap swap-rotate in-data-[theme=light]:swap-active" 
+        aria-label="Toggle light/dark mode" 
         onclick={onToggle}>
   <!-- sun -->
   <svg class="swap-on h-6 w-6 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
