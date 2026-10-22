@@ -21,6 +21,7 @@
 	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
 	let targetMovie: TargetMovie | null | undefined = $state(null);
 	let isSearching: boolean = $state(false);
+	let showSearchDropdown: boolean = $state(true);
 	let searchController: AbortController | null = null;
 
 	$effect(() => {
@@ -130,12 +131,22 @@
 		targetMovie = sessionData.targetMovie;	
 	}
 
-
+	/**
+	 * Cancels any searches, hides results when the search bar is unfocused.
+	 */
 	function onSearchBarBlur(): void {  
-		searchResults = null;
+		showSearchDropdown = false;
 		searchController?.abort();
 		searchController = null;
 		isSearching = false;
+	}
+
+	/**
+	 * Shows any previously-retrieved results again when the
+	 * searchbar is focused.
+	 */
+	function onSearchBarFocus(): void {
+		showSearchDropdown = true;
 	}
 </script>
 
@@ -149,6 +160,7 @@
 						{onSearch}
 						{onClear}
 						onBlur={onSearchBarBlur}
+						onFocus={onSearchBarFocus}
 						minCharacters={2}
 						class="text-md"
 						disabled={isGameFinished}
@@ -158,8 +170,11 @@
 					</button>
 				</div>
 
-				{#if isSearching || searchResults}
+				{#if showSearchDropdown && (isSearching || searchResults)}
+					<!-- preventDefault on mousedown keeps focus in the input so the list isn't hidden before a click lands. -->
+					<!-- svelte-ignore a11y_no_noninteractive_element_interactions: the handler only prevents focus loss, it adds no interaction -->
 					<ul
+						onmousedown={(e) => e.preventDefault()}
 						class="dropdown-content z-50 list bg-base-100 rounded-box shadow-xl border border-base-300 mt-2 max-h-[500px] overflow-y-auto w-full">
 						{#if searchResults}
 								{#each searchResults.results as searchResult}

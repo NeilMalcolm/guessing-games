@@ -9,7 +9,8 @@
         value?: string;
         onSearch: (query: string) => void; 
         onClear: () => void;
-        onBlur: () => void;
+        onBlur?: () => void;
+        onFocus?: () => void;
         minCharacters?: number; 
         placeholder?: string; 
         debounceTime?: number;
@@ -22,6 +23,7 @@
         onSearch, 
         onClear,
         onBlur,
+        onFocus,
         minCharacters = defaultMinCharacterForSearch, 
         placeholder = "Search...",
         debounceTime = 300,
@@ -76,7 +78,8 @@
             bind:value={value}
             bind:this={searchBar}
             oninput={debouncedSearch}
-            onblur={onInputBlur}
+            onblur={() => onInputBlur?.()}
+            onfocus={() => onFocus?.()}
             placeholder={placeholder}>
     </label>
 </div>
