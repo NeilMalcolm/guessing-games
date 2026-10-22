@@ -20,6 +20,8 @@
 
 	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
 	let targetMovie: TargetMovie | null | undefined = $state(null);
+	let isSearching: boolean = $state(false);
+	let searchController: AbortController | null = null;
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
@@ -41,19 +43,34 @@
 	 * Handles search from the searchbar.
 	 * @param searchTerm
 	 */
-	async function onSearch(searchTerm: String) {
+	async function onSearch(searchTerm: string) {
 		if (isGameFinished) {
 			return;
 		}
 
-		const response = await fetch(`/movies/search?title=${searchTerm}`);
+		searchController?.abort();
+		searchController = new AbortController();
+		const { signal } = searchController;
 
-		if (!response.ok) {
-			throw new Error('Failed to get search data');
+		try {
+			isSearching = true;
+			const response = await fetch(`/movies/search?title=${encodeURIComponent(searchTerm)}`, 
+				{ signal });	// need to abort if another search request comes in.
+
+			if (!response.ok) {
+				throw new Error('Failed to get search data');
+			}
+
+			let json = await response.json();
+			searchResults = json as SearchResponse;
+		} catch (e) { 
+			// don't throw for aborted exceptions, we can expect those.
+			if (e instanceof DOMException && e.name === 'AbortError') return;
+			throw e;	
+		} finally {
+			if (!signal.aborted)
+				isSearching = false;
 		}
-
-		let json = await response.json();
-		searchResults = json as SearchResponse;
 	}
 
 	/**
@@ -112,6 +129,14 @@
 		gameStatus = sessionData.gameStatus;
 		targetMovie = sessionData.targetMovie;	
 	}
+
+
+	function onSearchBarBlur(): void {  
+		searchResults = null;
+		searchController?.abort();
+		searchController = null;
+		isSearching = false;
+	}
 </script>
 
 <main>
@@ -123,7 +148,9 @@
 						bind:value={searchQuery}
 						{onSearch}
 						{onClear}
+						onBlur={onSearchBarBlur}
 						minCharacters={2}
+						class="text-md"
 						disabled={isGameFinished}
 					/>
 					<button class="btn btn-outline btn-warning w-24" disabled={isGameFinished}>
@@ -131,15 +158,18 @@
 					</button>
 				</div>
 
-				{#if searchResults}
+				{#if isSearching || searchResults}
 					<ul
-						class="dropdown-content z-50 list bg-base-100 rounded-box shadow-xl border border-base-300 mt-2 max-h-[500px] overflow-y-auto w-full"
-					>
-						{#each searchResults.results as searchResult}
-							<li class="w-full">
-								<SearchItem {searchResult} {onResultClicked} />
-							</li>
-						{/each}
+						class="dropdown-content z-50 list bg-base-100 rounded-box shadow-xl border border-base-300 mt-2 max-h-[500px] overflow-y-auto w-full">
+						{#if searchResults}
+								{#each searchResults.results as searchResult}
+									<li class="w-full">
+										<SearchItem {searchResult} {onResultClicked} />
+									</li>
+								{/each}
+						{:else}
+							<span class="skeleton skeleton-text pl-5 pr-5 pt-3 pb-4">Thumbing through film reels...</span>
+						{/if}
 					</ul>
 				{/if}
 			</div>

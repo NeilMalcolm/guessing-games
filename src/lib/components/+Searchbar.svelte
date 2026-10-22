@@ -9,6 +9,7 @@
         value?: string;
         onSearch: (query: string) => void; 
         onClear: () => void;
+        onBlur: () => void;
         minCharacters?: number; 
         placeholder?: string; 
         debounceTime?: number;
@@ -20,6 +21,7 @@
         value = $bindable(''),
         onSearch, 
         onClear,
+        onBlur,
         minCharacters = defaultMinCharacterForSearch, 
         placeholder = "Search...",
         debounceTime = 300,
@@ -44,13 +46,14 @@
         onSearch(value);
     }, debounceTime);
 
-    function onBlur(): void { 
+    function onInputBlur(): void { 
         if (!searchBar) 
         {
              return;
         }
 
-        searchBar
+        debouncedSearch.cancel();
+        onBlur();
     }
 
 
@@ -73,7 +76,7 @@
             bind:value={value}
             bind:this={searchBar}
             oninput={debouncedSearch}
-            onblur={onBlur}
+            onblur={onInputBlur}
             placeholder={placeholder}>
     </label>
 </div>
