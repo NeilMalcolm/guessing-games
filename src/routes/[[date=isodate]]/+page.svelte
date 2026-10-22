@@ -7,6 +7,7 @@
 	import type { GameSessionClientResponse, GuessResponse, TargetMovie } from '$lib/types/guess';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
+	import Dialog from '$lib/components/+Dialog.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -23,6 +24,8 @@
 	let isSearching: boolean = $state(false);
 	let showSearchDropdown: boolean = $state(true);
 	let searchController: AbortController | null = null;
+
+	let showGiveUpModal: boolean = $state(false);
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
@@ -132,6 +135,39 @@
 	}
 
 	/**
+	 * Gives up the current game session.
+	 */
+	async function onGiveUp() {
+		if (isGameFinished) {
+			return;
+		}
+
+		onClear();
+
+		const response = await fetch('/movies/give-up', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				date: data.playDate
+			})
+		});
+
+		if (!response.ok) {
+			console.error('Failed to give up');
+			return;
+		}
+
+		const sessionData: GameSessionClientResponse = await response.json();
+		guesses = sessionData.guesses;
+		gameStatus = sessionData.gameStatus;
+		targetMovie = sessionData.targetMovie;
+		showViewResults = true;
+		showResults = true;
+	}
+
+	/**
 	 * Cancels any searches, hides results when the search bar is unfocused.
 	 */
 	function onSearchBarBlur(): void {  
@@ -151,8 +187,8 @@
 </script>
 
 <main>
-	<div class="flex justify-center-safe">
-		<div>
+	<div class="flex justify-center">
+		<div class="w-full px-[15px] sm:max-w-xl md:max-w-2xl">
 			<div class="dropdown dropdown-bottom dropdown-open flex mt-2">
 				<div class="flex flex-1 gap-3">
 					<Searchbar
@@ -163,11 +199,22 @@
 						onFocus={onSearchBarFocus}
 						minCharacters={2}
 						class="text-md"
-						disabled={isGameFinished}
-					/>
-					<button class="btn btn-outline btn-warning w-24" disabled={isGameFinished}>
+						disabled={isGameFinished} />
+					<button class="btn btn-outline btn-warning w-24" 
+							disabled={isGameFinished || guesses.length < 1} 
+							onclick={() => showGiveUpModal = true}>
 						Give Up
 					</button>
+					<Dialog title="Give up on Guessing the Movie?"
+							
+							acceptText="Give Up" 
+							closeText="Keep Guessing"
+							acceptAction={onGiveUp}
+							bind:open={showGiveUpModal}>
+							<p class="text-base-content/60">Ready to admit defeat? This will end the game and reveal the movie. You won't be able to make any more guesses and this will count as a loss.</p> 
+							
+							<p class="text-base-content/60 mt-3">Are you sure you want to give up?</p>
+					</Dialog>
 				</div>
 
 				{#if showSearchDropdown && (isSearching || searchResults)}

@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
     import type { PageProps } from './$types';
 
     let { data }: PageProps = $props();
@@ -19,10 +19,10 @@
         return playDate === yesterday ? 'Yesterday' : dayMonthFormat.format(new Date(playDate));
     }
 
-    // A day counts as played once the game is won or lost.
+    // A day counts as played once the game is won, lost or given up.
     const filteredDays = $derived(
         data.rerunDays.filter((day) => {
-            const played = day.status === 'won' || day.status === 'lost';
+            const played = day.status === 'won' || day.status === 'lost' || day.status === 'gave_up';
             return filter === 'all' || (filter === 'played' ? played : !played);
         })
     );
@@ -46,7 +46,7 @@
                 <li>
                     <a href="/{day.playDate}"
                         class="card card-sm transition-transform hover:scale-105
-                            {day.status === 'won' ? 'border-2 border-success bg-success' : day.status === 'lost' ? 'border-2 border-error bg-error' : 'bg-base-200'}">
+                            {day.status === 'won' ? 'border-2 border-success bg-success' : day.status === 'lost' || day.status === 'gave_up' ? 'border-2 border-error bg-error' : 'bg-base-200'}">
                         <figure class="aspect-2/3 bg-base-300">
                             {#if day.poster}
                                 <img src={day.poster} alt="Poster for {day.playDate}" class="h-full w-full object-cover" />

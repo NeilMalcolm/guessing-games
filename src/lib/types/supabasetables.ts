@@ -36,9 +36,9 @@ export type DailyMovieWithDetails = Pick<Tables<'daily_movies'>, 'play_date' | '
 };
 
 /**
- * Allowed status states for a game session ('in_progress', 'won', or 'lost').
+ * Allowed status states for a game session ('in_progress', 'won', 'lost', or 'gave_up').
  */
-export type GameSessionStatus = 'in_progress' | 'won' | 'lost';
+export type GameSessionStatus = 'in_progress' | 'won' | 'lost' | 'gave_up';
 
 export const gamesSessionTable = 'game_sessions' satisfies TableName;
 /**

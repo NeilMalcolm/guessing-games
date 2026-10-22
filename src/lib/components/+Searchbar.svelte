@@ -55,7 +55,7 @@
         }
 
         debouncedSearch.cancel();
-        onBlur();
+        onBlur?.();
     }
 
 

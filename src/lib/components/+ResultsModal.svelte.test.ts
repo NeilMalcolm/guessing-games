@@ -2,10 +2,15 @@ import { page } from 'vitest/browser';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import ResultsModal from './+ResultsModal.svelte';
-import { Match, type GuessResponse, type PropertyResult } from '$lib/types/guess';
 import { getResultRows } from '$lib/utils/resultSquares';
+import { Match, type GuessResponse, type PropertyResult, type TargetMovie } from '$lib/types/guess';
 
 const prop = (match: Match): PropertyResult => ({ value: 'test', match });
+
+const targetMovie: TargetMovie = {
+	title: 'Interstellar',
+	videoUrl: 'https://www.example.com/embed/12345'
+};
 
 function createGuess(overrides: Partial<GuessResponse> = {}): GuessResponse {
 	return {
@@ -54,7 +59,8 @@ describe('+ResultsModal.svelte', () => {
 			open: true,
 			guesses,
 			won: true,
-			playDate: '2026-10-12'
+			playDate: '2026-10-12',
+			targetMovie
 		});
 
 		// Heading for win
@@ -77,7 +83,8 @@ describe('+ResultsModal.svelte', () => {
 			open: true,
 			guesses: [guess],
 			won: false,
-			playDate: '2026-10-12'
+			playDate: '2026-10-12',
+			targetMovie
 		});
 
 		await expect.element(page.getByText('Better luck next time')).toBeInTheDocument();
@@ -92,9 +99,10 @@ describe('+ResultsModal.svelte', () => {
 			guesses,
 			won: true,
 			playDate: '2026-10-12',
+
 			targetMovie: {
 				title: 'Interstellar',
-				videoUrl: 'https://www.youtube.com/embed/zSWdZVtXT7E'
+				videoUrl: 'https://www.example.com/embed/12345'
 			}
 		});
 
@@ -115,16 +123,16 @@ describe('+ResultsModal.svelte', () => {
 			guesses,
 			won: true,
 			playDate: '2026-10-12',
+
 			targetMovie: {
 				title: 'The Matrix',
-				videoUrl: 'https://www.youtube.com/embed/vKQi3bBA1y8'
+				videoUrl: 'https://www.example.com/embed/12345'
 			}
 		});
 
 		await expect.element(page.getByText('The Matrix')).toBeInTheDocument();
 		const iframe = page.getByTitle('Embed videos and playlists');
 		await expect.element(iframe).toBeInTheDocument();
-		await expect.element(iframe).toHaveAttribute('src', 'https://www.youtube.com/embed/vKQi3bBA1y8');
+		await expect.element(iframe).toHaveAttribute('src', 'https://www.example.com/embed/12345');
 	});
 });
-
