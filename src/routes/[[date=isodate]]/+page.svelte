@@ -23,7 +23,7 @@
 	let searchResults: SearchResponse | null = $state(null);
 	let gameStatus: string = $state(untrack(() => data.gameStatus ?? 'in_progress'));
 	let isGameFinished: boolean = $derived(gameStatus !== 'in_progress');
-	let newestGuessNumber: Number = $state(-1);
+	let newestGuessIndex: number = $state(-1);
 	let showResults = $state(false);
 	let showViewResults = $state(untrack(() => data.gameStatus !== 'in_progress'));
 
@@ -139,7 +139,7 @@
 
 		const sessionData: GameSessionClientResponse = await response.json();
 
-		newestGuessNumber = 0;
+		newestGuessIndex = 0;
 		guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
 		targetMovie = sessionData.targetMovie;
@@ -261,12 +261,12 @@
 			{/if}
 			<div class="mt-2">
 				<ul>
-					{#each guesses as guess, index (guess.title)}
+					{#each guesses as guess, index (`${guess.title}_${guesses.length - index}`)}
 						<li>
 							<Guess
 								{guess}
 								index={guesses.length - index}
-								animate={index == newestGuessNumber}
+								animate={index === newestGuessIndex}
 								delay={guessRevealDelay}
 								onRevealFinished={onGuessRevealed}
 							/>
