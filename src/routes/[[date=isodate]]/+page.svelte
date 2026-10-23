@@ -38,6 +38,9 @@
 	 * Triggers when a guess has finished being revealed.
 	*/
 	async function onGuessRevealed() {
+		
+		if (!targetMovie) return;
+
 		showViewResults = true;
 
 		setTimeout(() => { showResults = true; }, 800);
@@ -128,10 +131,15 @@
 
 		const sessionData: GameSessionClientResponse = await response.json();
 
+		console.log(sessionData);
 		newestGuessNumber = 0;
 		guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
 		targetMovie = sessionData.targetMovie;	
+		
+		console.log(guesses);
+		console.log(targetMovie);
+		console.log(gameStatus);
 	}
 
 	/**

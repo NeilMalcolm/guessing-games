@@ -284,7 +284,7 @@ describe('+Guess.svelte', () => {
 			expect(onRevealFinished).toHaveBeenCalledOnce();
 		});
 
-		it('does not invoke onSuccess callback when guess is incorrect', async () => {
+		it('does invoke guessRevealed callback after reveal is complete.', async () => {
 			const onRevealFinished = vi.fn();
 			render(Guess, {
 				guess: getGuessResponseWithMatch(Match.Exact, false),
@@ -296,7 +296,7 @@ describe('+Guess.svelte', () => {
 
 			await new Promise((resolve) => setTimeout(resolve, 250));
 
-			expect(onRevealFinished).not.toHaveBeenCalled();
+			expect(onRevealFinished).toHaveBeenCalled();
 		});
 	});
 });

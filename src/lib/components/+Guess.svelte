@@ -125,14 +125,14 @@
 		}
 
 		// 5. Update background colour of Guess card at the end for win state
-		if (guess.isCorrect) {
-			timers.push(
-				setTimeout(() => {
+		timers.push(
+			setTimeout(() => {
+				if (guess.isCorrect) {
 					isSuccessBg = true;
-					onRevealFinished?.();
-				}, schedule.finalSuccessDelay)
-			);
-		}
+				}
+				onRevealFinished?.();
+			}, schedule.finalSuccessDelay)
+		); 
 
 		return () => {
 			timers.forEach(clearTimeout);
