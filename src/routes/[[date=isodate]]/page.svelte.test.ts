@@ -483,4 +483,26 @@ describe('+page.svelte final guess reveal callback', () => {
 			.element(page.getByText('Sorry, better luck next time'))
 			.not.toBeInTheDocument();
 	});
+
+	it('renders multiple guesses with identical titles without throwing error', async () => {
+		// two 'Inception' movies.
+		const guess1 = createMockGuess(false);
+		const guess2 = createMockGuess(false);
+
+		render(Page, {
+			data: createPageData({
+				guesses: [guess1, guess2],
+				gameStatus: 'in_progress'
+			})
+		});
+
+		const guessTiles = page.getByTestId('guess-tile');
+		expect(guessTiles.elements()).toHaveLength(2);
+
+		const headings = page.getByRole('heading', { name: 'Inception' });
+		expect(headings.elements()).toHaveLength(2);
+
+		await expect.element(guessTiles.first()).toBeInTheDocument();
+		await expect.element(guessTiles.nth(1)).toBeInTheDocument();
+	});
 });

@@ -11,7 +11,7 @@
 
 	interface GuessProps {
 		guess: GuessResponse;
-		index: Number;
+		index: number;
 		animate?: boolean;
 		delay?: number;
 		onRevealFinished?: () => void;
@@ -144,8 +144,7 @@
 	class="card {isSuccessBg
 		? 'bg-success'
 		: 'bg-base-200'} transition-colors duration-500 shadow-md mb-3 overflow-hidden"
-	data-testid="guess-tile"
->
+	data-testid="guess-tile">
 	<div>
 		<div class="flex flex-1 p-5 gap-4 justify-stretch shrink-0">
 			{#if guess.image}
