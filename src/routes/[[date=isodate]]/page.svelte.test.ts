@@ -168,6 +168,12 @@ describe('+page.svelte game over states', () => {
 		// Failure message must be visible
 		await expect.element(page.getByText('Sorry, better luck next time')).toBeInTheDocument();
 
+		// View Results button should have soft error style
+		const viewResultsBtn = page.getByRole('button', { name: 'View Results' });
+		await expect.element(viewResultsBtn).toBeInTheDocument();
+		await expect.element(viewResultsBtn).toHaveClass('btn-soft');
+		await expect.element(viewResultsBtn).toHaveClass('btn-error');
+
 		// Modal should display target movie
 		await expect.element(page.getByRole('heading', { name: 'Better luck next time' })).toBeInTheDocument();
 		await expect.element(page.getByText('The Matrix')).toBeInTheDocument();
@@ -275,5 +281,206 @@ describe('+page.svelte search bar focus and blur', () => {
 		await new Promise((resolve) => setTimeout(resolve, 500));
 
 		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+});
+
+describe('+page.svelte final guess reveal callback', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('shows view results and opens modal via callback when final guess wins', async () => {
+		const guessResponse: GameSessionClientResponse = {
+			guesses: [createMockGuess(true)],
+			gameStatus: 'won',
+			targetMovie: { title: 'Inception', videoUrl: 'https://www.youtube.com/embed/xyz' }
+		};
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+			const urlStr = String(url);
+			if (urlStr.includes('/movies/search')) {
+				return new Response(
+					JSON.stringify({ ok: true, results: [{ id: 1, title: 'Inception', imagePath: null }] }),
+					{ status: 200 }
+				);
+			}
+			if (urlStr === '/movies/guess') {
+				return new Response(JSON.stringify(guessResponse), { status: 200 });
+			}
+			return new Response(JSON.stringify({ ok: true }), { status: 200 });
+		});
+
+		render(Page, {
+			data: createPageData({
+				guesses: [],
+				gameStatus: 'in_progress'
+			}),
+			guessRevealDelay: 50,
+			resultModalDelay: 50
+		});
+
+		const searchInput = page.getByPlaceholder('Search...');
+		await searchInput.fill('Inception');
+
+		const searchResultBtn = page.getByRole('button', { name: 'Inception' });
+		await searchResultBtn.click();
+
+		// Before reveal finishes, View Results and modal should not yet be shown
+		await expect
+			.element(page.getByRole('button', { name: 'View Results' }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(page.getByText('Well done, you guessed right!'))
+			.not.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('heading', { name: 'You got it!' }))
+			.not.toBeInTheDocument();
+
+		// Wait for the reveal animation delay to complete
+		await new Promise((resolve) => setTimeout(resolve, 80));
+
+		// Now callback has fired: View Results section should be visible
+		const viewResultsBtn = page.getByRole('button', { name: 'View Results' });
+		await expect.element(viewResultsBtn).toBeInTheDocument();
+		await expect.element(viewResultsBtn).toHaveClass('btn-soft');
+		await expect.element(viewResultsBtn).toHaveClass('btn-success');
+		await expect
+			.element(page.getByText('Well done, you guessed right!'))
+			.toBeInTheDocument();
+
+		// Wait for the resultModalDelay to complete
+		await new Promise((resolve) => setTimeout(resolve, 80));
+
+		// Modal should now be open displaying win details
+		await expect
+			.element(page.getByRole('heading', { name: 'You got it!' }))
+			.toBeInTheDocument();
+		await expect.element(page.getByRole('dialog').getByText('Inception')).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: 'Copy results' }))
+			.toBeInTheDocument();
+	});
+
+	it('shows view results and opens modal via callback when final guess loses', async () => {
+		const guessResponse: GameSessionClientResponse = {
+			guesses: [createMockGuess(false)],
+			gameStatus: 'lost',
+			targetMovie: { title: 'The Matrix', videoUrl: 'https://www.youtube.com/embed/xyz' }
+		};
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+			const urlStr = String(url);
+			if (urlStr.includes('/movies/search')) {
+				return new Response(
+					JSON.stringify({ ok: true, results: [{ id: 2, title: 'Avatar', imagePath: null }] }),
+					{ status: 200 }
+				);
+			}
+			if (urlStr === '/movies/guess') {
+				return new Response(JSON.stringify(guessResponse), { status: 200 });
+			}
+			return new Response(JSON.stringify({ ok: true }), { status: 200 });
+		});
+
+		render(Page, {
+			data: createPageData({
+				guesses: [],
+				gameStatus: 'in_progress'
+			}),
+			guessRevealDelay: 50,
+			resultModalDelay: 50
+		});
+
+		const searchInput = page.getByPlaceholder('Search...');
+		await searchInput.fill('Avatar');
+
+		const searchResultBtn = page.getByRole('button', { name: 'Avatar' });
+		await searchResultBtn.click();
+
+		// Before reveal finishes, View Results and modal should not yet be shown
+		await expect
+			.element(page.getByRole('button', { name: 'View Results' }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(page.getByText('Sorry, better luck next time'))
+			.not.toBeInTheDocument();
+		await expect
+			.element(page.getByRole('heading', { name: 'Better luck next time' }))
+			.not.toBeInTheDocument();
+
+		// Wait for the reveal animation delay to complete
+		await new Promise((resolve) => setTimeout(resolve, 80));
+
+		// Now callback has fired: View Results section should be visible
+		const viewResultsBtn = page.getByRole('button', { name: 'View Results' });
+		await expect.element(viewResultsBtn).toBeInTheDocument();
+		await expect.element(viewResultsBtn).toHaveClass('btn-soft');
+		await expect.element(viewResultsBtn).toHaveClass('btn-error');
+		await expect
+			.element(page.getByText('Sorry, better luck next time'))
+			.toBeInTheDocument();
+
+		// Wait for the resultModalDelay to complete
+		await new Promise((resolve) => setTimeout(resolve, 80));
+
+		// Modal should now be open displaying loss details
+		await expect
+			.element(page.getByRole('heading', { name: 'Better luck next time' }))
+			.toBeInTheDocument();
+		await expect.element(page.getByRole('dialog').getByText('The Matrix')).toBeInTheDocument();
+		await expect
+			.element(page.getByRole('button', { name: 'Copy results' }))
+			.toBeInTheDocument();
+	});
+
+	it('does not show view results or modal when guess is revealed but game is still in progress', async () => {
+		const guessResponse: GameSessionClientResponse = {
+			guesses: [createMockGuess(false)],
+			gameStatus: 'in_progress',
+			targetMovie: undefined
+		};
+
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+			const urlStr = String(url);
+			if (urlStr.includes('/movies/search')) {
+				return new Response(
+					JSON.stringify({ ok: true, results: [{ id: 3, title: 'Gladiator', imagePath: null }] }),
+					{ status: 200 }
+				);
+			}
+			if (urlStr === '/movies/guess') {
+				return new Response(JSON.stringify(guessResponse), { status: 200 });
+			}
+			return new Response(JSON.stringify({ ok: true }), { status: 200 });
+		});
+
+		render(Page, {
+			data: createPageData({
+				guesses: [],
+				gameStatus: 'in_progress'
+			}),
+			guessRevealDelay: 50,
+			resultModalDelay: 50
+		});
+
+		const searchInput = page.getByPlaceholder('Search...');
+		await searchInput.fill('Gladiator');
+
+		const searchResultBtn = page.getByRole('button', { name: 'Gladiator' });
+		await searchResultBtn.click();
+
+		// Wait for reveal animation delay and modal delay
+		await new Promise((resolve) => setTimeout(resolve, 160));
+
+		// View Results button should not be shown
+		await expect
+			.element(page.getByRole('button', { name: 'View Results' }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(page.getByText('Well done, you guessed right!'))
+			.not.toBeInTheDocument();
+		await expect
+			.element(page.getByText('Sorry, better luck next time'))
+			.not.toBeInTheDocument();
 	});
 });

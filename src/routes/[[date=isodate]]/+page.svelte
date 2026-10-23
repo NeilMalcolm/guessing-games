@@ -9,7 +9,15 @@
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/components/+Dialog.svelte';
 
-	let { data }: { data: PageData } = $props();
+	let {
+		data,
+		guessRevealDelay,
+		resultModalDelay = 800
+	}: {
+		data: PageData;
+		guessRevealDelay?: number;
+		resultModalDelay?: number;
+	} = $props();
 
 	let searchQuery = $state('');
 	let searchResults: SearchResponse | null = $state(null);
@@ -38,9 +46,12 @@
 	 * Triggers when a guess has finished being revealed.
 	*/
 	async function onGuessRevealed() {
+		
+		if (!targetMovie) return;
+
 		showViewResults = true;
 
-		setTimeout(() => { showResults = true; }, 800);
+		setTimeout(() => { showResults = true; }, resultModalDelay);
 	}
 
 	/**
@@ -131,7 +142,7 @@
 		newestGuessNumber = 0;
 		guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
-		targetMovie = sessionData.targetMovie;	
+		targetMovie = sessionData.targetMovie;
 	}
 
 	/**
@@ -256,6 +267,7 @@
 								{guess}
 								index={guesses.length - index}
 								animate={index == newestGuessNumber}
+								delay={guessRevealDelay}
 								onRevealFinished={onGuessRevealed}
 							/>
 						</li>

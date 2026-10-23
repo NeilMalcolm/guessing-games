@@ -34,6 +34,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const gameSession = await addGuessToDatabase(guessMovieDetails, dailyMovie, locals);
   const clientResponse = mapGameSessionToClientResponse(gameSession, dailyMovie);
+  console.log(clientResponse);
   return json(clientResponse);
 };
 
