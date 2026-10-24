@@ -14,6 +14,7 @@ const targetMovie: TargetMovie = {
 
 function createGuess(overrides: Partial<GuessResponse> = {}): GuessResponse {
 	return {
+		movieId: 1,
 		title: 'Interstellar',
 		image: null,
 		yearResult: prop(Match.Higher),

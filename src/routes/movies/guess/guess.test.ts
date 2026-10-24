@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-vi.mock('$lib/supabaseAdmin', () => ({ supabaseAdmin: { from: vi.fn() } }));
+vi.mock('$lib/supabaseAdmin', () => ({
+	supabaseAdmin: {
+		from: vi.fn(),
+		rpc: vi.fn()
+	}
+}));
 vi.mock('$lib/utils/gameLogic', () => ({
 	mapGameSessionToClientResponse: vi.fn((session, movie) => ({
 		guesses: [],
@@ -62,6 +67,7 @@ describe('POST /movies/guess', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
 		vi.mocked(supabaseAdmin.from).mockReset();
+		vi.mocked(supabaseAdmin.rpc).mockReset();
 		vi.mocked(mapGameSessionToClientResponse).mockClear();
 	});
 
@@ -214,6 +220,7 @@ describe('POST /movies/guess', () => {
 				status: 400,
 				body: { message: expect.stringContaining(`already finished with status: ${status}`) }
 			});
+			expect(supabaseAdmin.rpc).not.toHaveBeenCalled();
 		}
 	);
 
@@ -264,6 +271,7 @@ describe('POST /movies/guess', () => {
 			status: 400,
 			body: { message: expect.stringContaining('already been guessed') }
 		});
+		expect(supabaseAdmin.rpc).not.toHaveBeenCalled();
 	});
 
 	it('rejects with 400 if max attempts already reached', async () => {
@@ -316,20 +324,203 @@ describe('POST /movies/guess', () => {
 			status: 400,
 			body: { message: expect.stringContaining('Maximum guess attempts reached') }
 		});
+		expect(supabaseAdmin.rpc).not.toHaveBeenCalled();
+	});
+
+	it('rejects with 400 when record_guess_atomic returns SESSION_ALREADY_FINISHED', async () => {
+		vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
+			if (table === 'daily_movies') {
+				return {
+					select: () => ({
+						eq: () => ({
+							single: async () => ({ data: { movie: { id: 99, title: 'Target' } } })
+						})
+					})
+				} as any;
+			}
+			if (table === 'movies') {
+				return {
+					select: () => ({
+						eq: () => ({
+							single: async () => ({ data: { id: 10, title: 'Guessed Movie' } })
+						})
+					})
+				} as any;
+			}
+			if (table === 'game_sessions') {
+				return {
+					select: () => ({
+						eq: () => ({
+							eq: () => ({
+								maybeSingle: async () => ({
+									data: {
+										id: 'session-123',
+										user_id: 'user-1',
+										target_movie_id: 99,
+										status: 'in_progress',
+										max_attempts: 6,
+										guesses: []
+									}
+								})
+							})
+						})
+					})
+				} as any;
+			}
+			return {} as any;
+		});
+
+		vi.mocked(supabaseAdmin.rpc).mockResolvedValue({
+			data: {
+				success: false,
+				error: 'SESSION_ALREADY_FINISHED',
+				message: 'Game session is already finished with status: won'
+			},
+			error: null
+		} as any);
+
+		vi.mocked(supabaseAdmin.rpc).mockResolvedValue({
+			data: {
+				success: false,
+				error: 'SESSION_ALREADY_FINISHED',
+				message: 'Game session is already finished with status: won'
+			},
+			error: null
+		} as any);
+
+		await expect(POST(createEvent({ guessedMovieId: 10, date: '2026-10-12' }))).rejects.toMatchObject({
+			status: 400,
+			body: { message: expect.stringContaining('already finished with status: won') }
+		});
+	});
+
+	it('rejects with 400 when record_guess_atomic returns CONCURRENT_GUESS', async () => {
+		vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
+			if (table === 'daily_movies') {
+				return {
+					select: () => ({
+						eq: () => ({
+							single: async () => ({ data: { movie: { id: 99, title: 'Target' } } })
+						})
+					})
+				} as any;
+			}
+			if (table === 'movies') {
+				return {
+					select: () => ({
+						eq: () => ({
+							single: async () => ({ data: { id: 10, title: 'Guessed Movie' } })
+						})
+					})
+				} as any;
+			}
+			if (table === 'game_sessions') {
+				return {
+					select: () => ({
+						eq: () => ({
+							eq: () => ({
+								maybeSingle: async () => ({
+									data: {
+										id: 'session-123',
+										user_id: 'user-1',
+										target_movie_id: 99,
+										status: 'in_progress',
+										max_attempts: 6,
+										guesses: []
+									}
+								})
+							})
+						})
+					})
+				} as any;
+			}
+			return {} as any;
+		});
+
+		vi.mocked(supabaseAdmin.rpc).mockResolvedValue({
+			data: {
+				success: false,
+				error: 'CONCURRENT_GUESS',
+				message: 'A guess was already recorded for this attempt. Please refresh.'
+			},
+			error: null
+		} as any);
+
+		vi.mocked(supabaseAdmin.rpc).mockResolvedValue({
+			data: {
+				success: false,
+				error: 'CONCURRENT_GUESS',
+				message: 'A guess was already recorded for this attempt. Please refresh.'
+			},
+			error: null
+		} as any);
+
+		await expect(POST(createEvent({ guessedMovieId: 10, date: '2026-10-12' }))).rejects.toMatchObject({
+			status: 400,
+			body: { message: expect.stringContaining('already recorded for this attempt') }
+		});
+	});
+
+	it('rejects with 500 when record_guess_atomic fails with database error', async () => {
+		vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
+			if (table === 'daily_movies') {
+				return {
+					select: () => ({
+						eq: () => ({
+							single: async () => ({ data: { movie: { id: 99, title: 'Target' } } })
+						})
+					})
+				} as any;
+			}
+			if (table === 'movies') {
+				return {
+					select: () => ({
+						eq: () => ({
+							single: async () => ({ data: { id: 10, title: 'Guessed Movie' } })
+						})
+					})
+				} as any;
+			}
+			if (table === 'game_sessions') {
+				return {
+					select: () => ({
+						eq: () => ({
+							eq: () => ({
+								maybeSingle: async () => ({
+									data: {
+										id: 'session-123',
+										user_id: 'user-1',
+										target_movie_id: 99,
+										status: 'in_progress',
+										max_attempts: 6,
+										guesses: []
+									}
+								})
+							})
+						})
+					})
+				} as any;
+			}
+			return {} as any;
+		});
+
+		vi.mocked(supabaseAdmin.rpc).mockResolvedValue({
+			data: null,
+			error: { message: 'DB connection dropped' }
+		} as any);
+
+		vi.mocked(supabaseAdmin.rpc).mockResolvedValue({
+			data: null,
+			error: { message: 'DB connection dropped' }
+		} as any);
+
+		await expect(POST(createEvent({ guessedMovieId: 10, date: '2026-10-12' }))).rejects.toMatchObject({
+			status: 500,
+			body: { message: expect.stringContaining('Failed to save guess') }
+		});
 	});
 
 	it('updates status to won when the guessed movie matches the target movie', async () => {
-		const updateMock = vi.fn().mockReturnValue({
-			eq: vi.fn().mockReturnValue({
-				eq: vi.fn().mockResolvedValue({ error: null })
-			})
-		});
-		const insertGuessMock = vi.fn().mockReturnValue({
-			select: () => ({
-				single: async () => ({ data: { id: 'guess-1' }, error: null })
-			})
-		});
-
 		vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
 			if (table === 'daily_movies') {
 				return {
@@ -348,9 +539,6 @@ describe('POST /movies/guess', () => {
 						})
 					})
 				} as any;
-			}
-			if (table === 'guesses') {
-				return { insert: insertGuessMock } as any;
 			}
 			if (table === 'game_sessions') {
 				return {
@@ -379,42 +567,31 @@ describe('POST /movies/guess', () => {
 								})
 							})
 						})
-					}),
-					update: updateMock
+					})
 				} as any;
 			}
 			return {} as any;
 		});
 
+		vi.mocked(supabaseAdmin.rpc).mockResolvedValue({
+			data: { success: true, guess_id: 'g-1' },
+			error: null
+		} as any);
+
 		const response = await POST(createEvent({ guessedMovieId: 99, date: '2026-10-12' }));
 		expect(response.status).toBe(200);
 
-		expect(insertGuessMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				guess_number: 1,
-				is_correct: true,
-				movie_id: 99
-			})
-		);
-		expect(updateMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				status: 'won'
-			})
-		);
+		expect(supabaseAdmin.rpc).toHaveBeenCalledWith('record_guess_atomic', {
+			p_game_id: 'session-123',
+			p_user_id: 'user-1',
+			p_movie_id: 99,
+			p_guess_number: 1,
+			p_is_correct: true,
+			p_new_status: 'won'
+		});
 	});
 
 	it('updates status to lost when reaching max attempts without matching', async () => {
-		const updateMock = vi.fn().mockReturnValue({
-			eq: vi.fn().mockReturnValue({
-				eq: vi.fn().mockResolvedValue({ error: null })
-			})
-		});
-		const insertGuessMock = vi.fn().mockReturnValue({
-			select: () => ({
-				single: async () => ({ data: { id: 'guess-2' }, error: null })
-			})
-		});
-
 		vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
 			if (table === 'daily_movies') {
 				return {
@@ -433,9 +610,6 @@ describe('POST /movies/guess', () => {
 						})
 					})
 				} as any;
-			}
-			if (table === 'guesses') {
-				return { insert: insertGuessMock } as any;
 			}
 			if (table === 'game_sessions') {
 				return {
@@ -467,27 +641,28 @@ describe('POST /movies/guess', () => {
 								})
 							})
 						})
-					}),
-					update: updateMock
+					})
 				} as any;
 			}
 			return {} as any;
 		});
 
+		vi.mocked(supabaseAdmin.rpc).mockResolvedValue({
+			data: { success: true, guess_id: 'g-2' },
+			error: null
+		} as any);
+
 		const response = await POST(createEvent({ guessedMovieId: 10, date: '2026-10-12' }));
 		expect(response.status).toBe(200);
 
-		expect(insertGuessMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				guess_number: 2,
-				is_correct: false,
-				movie_id: 10
-			})
-		);
-		expect(updateMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				status: 'lost'
-			})
-		);
+		expect(supabaseAdmin.rpc).toHaveBeenCalledWith('record_guess_atomic', {
+			p_game_id: 'session-123',
+			p_user_id: 'user-1',
+			p_movie_id: 10,
+			p_guess_number: 2,
+			p_is_correct: false,
+			p_new_status: 'lost'
+		});
 	});
 });
+

@@ -1,6 +1,7 @@
 import type { GameSessionStatus } from "./supabasetables";
 
 export interface GuessResponse {
+  movieId: number;
   title: string;
   image: string | null;
   yearResult: PropertyResult;
