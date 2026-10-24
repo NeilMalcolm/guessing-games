@@ -4,20 +4,17 @@ import { PUBLIC_TMDB_THUMB_URL } from '$env/static/public';
 import type { SearchResult, SearchResponse } from '$lib/types/search';
 import { supabaseAdmin } from '$lib/supabaseAdmin';
 
-export type { SearchResult, SearchResponse };
-
 /**
  * The GET endpoint for movies/search. Returns movies with a title matching on the
- *  search term provided from our Supabase movies table. 
+ * search term provided from our Supabase movies table. 
  * @param url The URL of the GET request.
- * @param locals 
- * @returns SearchResults if found, in JSON format. Otherwise empty array. 
+ * @returns SearchResponse in JSON format.
  */
 export const GET: RequestHandler = async ({ url }) => {
     let titleToSearchFor = url.searchParams.get('title');
 
     if (!titleToSearchFor) {
-        return json([]);
+        return json({ results: [] });
     }
 
     // Search Supabase movies table using movie_search function
@@ -30,16 +27,15 @@ export const GET: RequestHandler = async ({ url }) => {
     
     if (dbError) {
         console.error("Supabase search error:", dbError);
-        return json([]);
+        return json({ results: [] }, { status: 500 });
     }
 
     // Group and check for duplicate titles
     const formattedResults = formatTitlesWithYearForDuplicates(movies || []);
 
     // return results to front-end 
-    let result = {
-        results: formattedResults,
-        ok: true
+    const result: SearchResponse = {
+        results: formattedResults
     };
 
     return json(result);

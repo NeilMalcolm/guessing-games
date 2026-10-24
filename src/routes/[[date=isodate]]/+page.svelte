@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Searchbar from '$lib/components/+Searchbar.svelte';
-	import type { SearchResponse, SearchResult } from '../movies/search/+server';
+	import type { SearchResponse, SearchResult } from '$lib/types/search';
 	import SearchItem from '$lib/components/+SearchItem.svelte';
 	import Guess from '$lib/components/+Guess.svelte';
 	import ResultsModal from '$lib/components/+ResultsModal.svelte';
@@ -73,7 +73,8 @@
 				{ signal });	// need to abort if another search request comes in.
 
 			if (!response.ok) {
-				throw new Error('Failed to get search data');
+				searchResults = { results: [] };
+				return;
 			}
 
 			let json = await response.json();
@@ -81,7 +82,7 @@
 		} catch (e) { 
 			// don't throw for aborted exceptions, we can expect those.
 			if (e instanceof DOMException && e.name === 'AbortError') return;
-			throw e;	
+			searchResults = { results: [] };
 		} finally {
 			if (!signal.aborted)
 				isSearching = false;

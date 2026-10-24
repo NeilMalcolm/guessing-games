@@ -300,7 +300,7 @@ describe('+page.svelte final guess reveal callback', () => {
 			const urlStr = String(url);
 			if (urlStr.includes('/movies/search')) {
 				return new Response(
-					JSON.stringify({ ok: true, results: [{ id: 1, title: 'Inception', imagePath: null }] }),
+					JSON.stringify({ results: [{ id: 1, title: 'Inception', imagePath: null }] }),
 					{ status: 200 }
 				);
 			}
@@ -372,7 +372,7 @@ describe('+page.svelte final guess reveal callback', () => {
 			const urlStr = String(url);
 			if (urlStr.includes('/movies/search')) {
 				return new Response(
-					JSON.stringify({ ok: true, results: [{ id: 2, title: 'Avatar', imagePath: null }] }),
+					JSON.stringify({ results: [{ id: 2, title: 'Avatar', imagePath: null }] }),
 					{ status: 200 }
 				);
 			}
@@ -444,7 +444,7 @@ describe('+page.svelte final guess reveal callback', () => {
 			const urlStr = String(url);
 			if (urlStr.includes('/movies/search')) {
 				return new Response(
-					JSON.stringify({ ok: true, results: [{ id: 3, title: 'Gladiator', imagePath: null }] }),
+					JSON.stringify({ results: [{ id: 3, title: 'Gladiator', imagePath: null }] }),
 					{ status: 200 }
 				);
 			}

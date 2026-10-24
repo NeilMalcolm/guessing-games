@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { SearchResult } from "../../routes/movies/search/+server";
+	import type { SearchResult } from "$lib/types/search";
 
     let { 
         searchResult,
