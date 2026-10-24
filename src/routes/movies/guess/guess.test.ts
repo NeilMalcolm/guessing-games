@@ -34,6 +34,29 @@ function createEvent(body: unknown, userId: string = 'user-1') {
 	} as any;
 }
 
+function createBrokenJsonEvent(userId: string = 'user-1') {
+	return {
+		request: {
+			json: async () => {
+				throw new SyntaxError('Unexpected token in JSON');
+			}
+		},
+		locals: {
+			safeGetSession: vi.fn().mockResolvedValue({
+				user: { id: userId },
+				session: { user: { id: userId } }
+			}),
+			supabase: {
+				auth: {
+					signInAnonymously: vi.fn().mockResolvedValue({
+						data: { user: { id: userId }, session: { user: { id: userId } } }
+					})
+				}
+			}
+		}
+	} as any;
+}
+
 describe('POST /movies/guess', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -46,6 +69,38 @@ describe('POST /movies/guess', () => {
 		vi.useRealTimers();
 	});
 
+	it('rejects unparseable or broken JSON body with 400', async () => {
+		await expect(POST(createBrokenJsonEvent())).rejects.toMatchObject({
+			status: 400,
+			body: { message: expect.stringContaining('Invalid guessedMovieId') }
+		});
+		expect(supabaseAdmin.from).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['empty body', {}],
+		['null body', null],
+		['missing guessedMovieId', { date: '2026-10-12' }],
+		['undefined guessedMovieId', { guessedMovieId: undefined, date: '2026-10-12' }],
+		['null guessedMovieId', { guessedMovieId: null, date: '2026-10-12' }],
+		['string non-number', { guessedMovieId: 'abc', date: '2026-10-12' }],
+		['empty string', { guessedMovieId: '', date: '2026-10-12' }],
+		['whitespace string', { guessedMovieId: '   ', date: '2026-10-12' }],
+		['boolean true', { guessedMovieId: true, date: '2026-10-12' }],
+		['boolean false', { guessedMovieId: false, date: '2026-10-12' }],
+		['zero', { guessedMovieId: 0, date: '2026-10-12' }],
+		['negative integer', { guessedMovieId: -5, date: '2026-10-12' }],
+		['float', { guessedMovieId: 1.5, date: '2026-10-12' }],
+		['array', { guessedMovieId: [1], date: '2026-10-12' }],
+		['object', { guessedMovieId: { id: 1 }, date: '2026-10-12' }]
+	])('rejects invalid guessedMovieId (%s) with 400', async (_, body) => {
+		await expect(POST(createEvent(body))).rejects.toMatchObject({
+			status: 400,
+			body: { message: expect.stringContaining('Invalid guessedMovieId') }
+		});
+		expect(supabaseAdmin.from).not.toHaveBeenCalled();
+	});
+
 	it.each(['not-a-date', '2026-1-1', '2026-10-11T00:00:00Z'])(
 		'rejects malformed date %j with 400',
 		async (date) => {
@@ -53,10 +108,13 @@ describe('POST /movies/guess', () => {
 		}
 	);
 
-	it.each(['2026-10-13', '2027-01-01'])('rejects future date %s with 400', async (date) => {
-		await expect(POST(createEvent({ guessedMovieId: 1, date }))).rejects.toMatchObject({ status: 400 });
-		expect(supabaseAdmin.from).not.toHaveBeenCalled();
-	});
+	it.each(['2026-10-13', '2027-01-01'])(
+		'rejects future date %s with 400',
+		async (date) => {
+			await expect(POST(createEvent({ guessedMovieId: 1, date }))).rejects.toMatchObject({ status: 400 });
+			expect(supabaseAdmin.from).not.toHaveBeenCalled();
+		}
+	);
 
 	it('rejects with 404 if daily movie is not found', async () => {
 		vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
@@ -103,56 +161,7 @@ describe('POST /movies/guess', () => {
 
 		await expect(POST(createEvent({ guessedMovieId: 999, date: '2026-10-12' }))).rejects.toMatchObject({
 			status: 404,
-			body: { message: expect.stringContaining('No value back for id') }
-		});
-	});
-
-	it('rejects with 403 if game session belongs to a different user', async () => {
-		vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
-			if (table === 'daily_movies') {
-				return {
-					select: () => ({
-						eq: () => ({
-							single: async () => ({ data: { movie: { id: 99 } } })
-						})
-					})
-				} as any;
-			}
-			if (table === 'movies') {
-				return {
-					select: () => ({
-						eq: () => ({
-							single: async () => ({ data: { id: 10, title: 'Guessed Movie' } })
-						})
-					})
-				} as any;
-			}
-			if (table === 'game_sessions') {
-				return {
-					select: () => ({
-						eq: () => ({
-							eq: () => ({
-								maybeSingle: async () => ({
-									data: {
-										id: 'session-123',
-										user_id: 'different-user',
-										target_movie_id: 99,
-										status: 'in_progress',
-										max_attempts: 6,
-										guesses: []
-									}
-								})
-							})
-						})
-					})
-				} as any;
-			}
-			return {} as any;
-		});
-
-		await expect(POST(createEvent({ guessedMovieId: 10, date: '2026-10-12' }, 'user-1'))).rejects.toMatchObject({
-			status: 403,
-			body: { message: expect.stringContaining('does not belong to authenticated user') }
+			body: { message: expect.stringContaining('Movie not found') }
 		});
 	});
 

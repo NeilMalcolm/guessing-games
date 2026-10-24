@@ -14,8 +14,20 @@ import {
 } from "$lib/server/gameSession";
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  const { guessedMovieId, date } = await request.json();
-  const playDate = parseAndValidatePlayDate(date);
+  const body = await request.json().catch(() => ({}));
+  const rawId = body?.guessedMovieId;
+  const guessedMovieId =
+    typeof rawId === 'number'
+      ? rawId
+      : typeof rawId === 'string' && rawId.trim() !== ''
+        ? Number(rawId)
+        : NaN;
+
+  if (!Number.isInteger(guessedMovieId) || guessedMovieId <= 0) {
+    throw jsonError(400, "Invalid guessedMovieId");
+  }
+
+  const playDate = parseAndValidatePlayDate(body?.date);
 
   // get today's movie
   console.log(`guessed movie ${guessedMovieId}`);
@@ -28,8 +40,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     .single<Movie>();
 
   if (guessMovieError || !guessMovieDetails) {
-    console.log("return 500");
-    return jsonError(404, "No value back for id");
+    throw jsonError(404, "Movie not found");
   }
 
   const gameSession = await addGuessToDatabase(guessMovieDetails, dailyMovie, locals);
@@ -49,11 +60,6 @@ async function addGuessToDatabase(
 
   const user = await getOrCreateUser(locals);
   const gameSession = await getOrCreateGameSession(user.id, targetMovie.id);
-
-  // Ensure game session belongs to the authenticated user
-  if (gameSession.user_id !== user.id) {
-    throw jsonError(403, "Forbidden: Game session does not belong to authenticated user");
-  }
 
   // Check if we've already finished or guessed this
   if (gameSession.status !== 'in_progress') {

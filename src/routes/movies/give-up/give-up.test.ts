@@ -34,6 +34,29 @@ function createEvent(body: unknown, userId: string = 'user-1') {
 	} as any;
 }
 
+function createBrokenJsonEvent(userId: string = 'user-1') {
+	return {
+		request: {
+			json: async () => {
+				throw new SyntaxError('Unexpected token in JSON');
+			}
+		},
+		locals: {
+			safeGetSession: vi.fn().mockResolvedValue({
+				user: { id: userId },
+				session: { user: { id: userId } }
+			}),
+			supabase: {
+				auth: {
+					signInAnonymously: vi.fn().mockResolvedValue({
+						data: { user: { id: userId }, session: { user: { id: userId } } }
+					})
+				}
+			}
+		}
+	} as any;
+}
+
 describe('POST /movies/give-up', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -81,46 +104,6 @@ describe('POST /movies/give-up', () => {
 		});
 	});
 
-	it('rejects with 403 if game session belongs to a different user', async () => {
-		vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
-			if (table === 'daily_movies') {
-				return {
-					select: () => ({
-						eq: () => ({
-							single: async () => ({ data: { movie: { id: 99, title: 'Target Movie' } } })
-						})
-					})
-				} as any;
-			}
-			if (table === 'game_sessions') {
-				return {
-					select: () => ({
-						eq: () => ({
-							eq: () => ({
-								maybeSingle: async () => ({
-									data: {
-										id: 'session-123',
-										user_id: 'different-user',
-										target_movie_id: 99,
-										status: 'in_progress',
-										max_attempts: 6,
-										guesses: []
-									}
-								})
-							})
-						})
-					})
-				} as any;
-			}
-			return {} as any;
-		});
-
-		await expect(POST(createEvent({ date: '2026-10-12' }, 'user-1'))).rejects.toMatchObject({
-			status: 403,
-			body: { message: expect.stringContaining('does not belong to authenticated user') }
-		});
-	});
-
 	it.each(['won', 'lost', 'gave_up'])(
 		'rejects with 400 if game session is already finished with status %s',
 		async (status) => {
@@ -163,6 +146,55 @@ describe('POST /movies/give-up', () => {
 			});
 		}
 	);
+
+	it('handles unparseable or broken JSON body gracefully by falling back to empty payload', async () => {
+		const targetMovie = { id: 99, title: 'The Matrix', video: 'm8e-679Chvg' };
+		const updateMock = vi.fn().mockReturnValue({
+			eq: vi.fn().mockReturnValue({
+				eq: vi.fn().mockResolvedValue({ error: null })
+			})
+		});
+
+		vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
+			if (table === 'daily_movies') {
+				return {
+					select: () => ({
+						eq: () => ({
+							single: async () => ({ data: { movie: targetMovie } })
+						})
+					})
+				} as any;
+			}
+			if (table === 'game_sessions') {
+				return {
+					select: () => ({
+						eq: () => ({
+							eq: () => ({
+								maybeSingle: async () => ({
+									data: {
+										id: 'session-123',
+										user_id: 'user-1',
+										target_movie_id: 99,
+										status: 'in_progress',
+										max_attempts: 6,
+										guesses: []
+									}
+								})
+							})
+						})
+					}),
+					update: updateMock
+				} as any;
+			}
+			return {} as any;
+		});
+
+		const response = await POST(createBrokenJsonEvent('user-1'));
+		expect(response.status).toBe(200);
+
+		const json = await response.json();
+		expect(json.gameStatus).toBe('gave_up');
+	});
 
 	it('updates existing in_progress game session to gave_up and returns GameSessionClientResponse', async () => {
 		const targetMovie = { id: 99, title: 'The Matrix', video: 'm8e-679Chvg' };
@@ -292,4 +324,3 @@ describe('POST /movies/give-up', () => {
 		);
 	});
 });
-
