@@ -22,7 +22,7 @@ export interface GameSessionClientResponse {
 
 export interface TargetMovie { 
   title: string,
-  videoUrl: string
+  videoUrl: string | null;
 }
 
 export interface PropertyResult {

@@ -76,8 +76,20 @@ describe('mapGameSessionToClientResponse targetMovie video URL exposure', () => 
 
 		expect(result.targetMovie).toEqual({
 			title: 'Fight Club',
-			videoUrl: 'https://www.youtube.com/embed/null'
+			videoUrl: null
+		});
+	});
+	it('sets videoUrl to null when video is an empty string upon win/loss', () => {
+		const movieWithEmptyVideo: Movie = {
+			...mockMovie,
+			video: ''
+		};
+		const session = createSession('won');
+		const result = mapGameSessionToClientResponse(session, movieWithEmptyVideo);
+
+		expect(result.targetMovie).toEqual({
+			title: 'Fight Club',
+			videoUrl: null
 		});
 	});
 });
-

@@ -135,4 +135,23 @@ describe('+ResultsModal.svelte', () => {
 		await expect.element(iframe).toBeInTheDocument();
 		await expect.element(iframe).toHaveAttribute('src', 'https://www.example.com/embed/12345');
 	});
+	it('does not render video iframe when targetMovie videoUrl is null', async () => {
+		const guesses = [createGuess({ isCorrect: true, status: 'won' })];
+
+		render(ResultsModal, {
+			open: true,
+			guesses,
+			won: true,
+			playDate: '2026-10-12',
+
+			targetMovie: {
+				title: 'The Matrix',
+				videoUrl: null
+			}
+		});
+
+		await expect.element(page.getByText('The Matrix')).toBeInTheDocument();
+		const iframe = page.getByTitle('Embed videos and playlists');
+		await expect.element(iframe).not.toBeInTheDocument();
+	});
 });

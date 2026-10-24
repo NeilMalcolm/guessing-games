@@ -57,10 +57,11 @@
 			</div>
 		</div>
 
+		{#if targetMovie?.videoUrl}
 		<div class="rounded-box">
 			<iframe width="100%" 
 					height="280" 
-					src={targetMovie?.videoUrl} 
+					src={targetMovie.videoUrl} 
 					title="Embed videos and playlists" 
 					frameborder="0" 
 					class="rounded-box"
@@ -68,7 +69,8 @@
 					referrerpolicy="strict-origin-when-cross-origin" 
 					allowfullscreen></iframe>
 
-		</div>	
+		</div>
+		{/if}
 	</div>
 	<form method="dialog" class="modal-backdrop">
 		<button aria-label="Close">close</button>
