@@ -13,6 +13,7 @@ const prop = (match: Match): PropertyResult => ({ value: 'x', match });
 
 function makeGuess(overrides: Partial<GuessResponse> = {}): GuessResponse {
 	return {
+		movieId: 1,
 		title: 't',
 		image: null,
 		yearResult: prop(Match.Higher),

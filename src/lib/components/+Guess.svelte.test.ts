@@ -322,6 +322,7 @@ function getFullGuessResponse(): GuessResponse {
 
 function getGuessResponseWithMatch(match: Match, isCorrect: boolean = false): GuessResponse {
 	return getGuessResponse(
+		1,
 		'Example',
 		'https://example.com/image.png',
 		{
@@ -373,6 +374,7 @@ function getGuessResponseWithMatch(match: Match, isCorrect: boolean = false): Gu
 }
 
 function getGuessResponse(
+	movieId: number,
 	title: string,
 	image: string | null = null,
 	yearResult: PropertyResult,
@@ -386,6 +388,7 @@ function getGuessResponse(
 	status: GameSessionStatus
 ): GuessResponse {
 	return {
+		movieId: movieId,
 		title: title,
 		image: image,
 		yearResult: yearResult,
