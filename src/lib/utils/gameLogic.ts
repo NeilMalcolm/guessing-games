@@ -159,10 +159,10 @@ export function mapGameSessionToClientResponse(
     ? null
     : {
       title: dailyMovie.title,
-      videoUrl: `https://www.youtube.com/embed/${dailyMovie.video}`
+      videoUrl: dailyMovie.video ? `https://www.youtube.com/embed/${dailyMovie.video}` : null
     }; 
 
-    console.log(targetMovie?.videoUrl);
+
   return {
     guesses: mappedGuesses,
     gameStatus: gameSession.status,
