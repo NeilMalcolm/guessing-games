@@ -7,8 +7,9 @@ import { Match, type GuessResponse, type PropertyResult, type GameSessionClientR
 
 const prop = (match: Match): PropertyResult => ({ value: 'test', match });
 
-function createMockGuess(isCorrect: boolean = false): GuessResponse {
+function createMockGuess(isCorrect: boolean = false, movieId: number = 1): GuessResponse {
 	return {
+		movieId,
 		title: 'Inception',
 		image: null,
 		yearResult: prop(isCorrect ? Match.Exact : Match.Higher),
@@ -504,5 +505,53 @@ describe('+page.svelte final guess reveal callback', () => {
 
 		await expect.element(guessTiles.first()).toBeInTheDocument();
 		await expect.element(guessTiles.nth(1)).toBeInTheDocument();
+	});
+
+	it('cannot select search result for a previously-guessed movie', async () => {
+		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+			const urlStr = String(url);
+			if (urlStr.includes('/movies/search')) {
+				return new Response(
+					JSON.stringify({
+						results: [
+							{ id: 42, title: 'Inception', imagePath: null },
+							{ id: 99, title: 'Interstellar', imagePath: null }
+						]
+					}),
+					{ status: 200 }
+				);
+			}
+			return new Response(JSON.stringify({ ok: true }), { status: 200 });
+		});
+
+		const previousGuess = createMockGuess(false, 42);
+
+		render(Page, {
+			data: createPageData({
+				guesses: [previousGuess],
+				gameStatus: 'in_progress'
+			})
+		});
+
+		const searchInput = page.getByPlaceholder('Search...');
+		await searchInput.fill('Inception');
+
+		// Search result for the already-guessed movie shows indicator
+		await expect.element(page.getByText('Already guessed...')).toBeInTheDocument();
+
+		// Clicking the already-guessed movie result button
+		const alreadyGuessedBtn = page.getByRole('button', { name: /Already guessed/i });
+		await alreadyGuessedBtn.click();
+
+		// Clicking an already guessed movie must not trigger a guess submission
+		const guessCalls = fetchSpy.mock.calls.filter(([url]) =>
+			String(url).includes('/movies/guess')
+		);
+		expect(guessCalls).toHaveLength(0);
+
+		// Dropdown remains open and no additional guess tile was added
+		await expect.element(page.getByText('Already guessed...')).toBeInTheDocument();
+		const guessTiles = page.getByTestId('guess-tile');
+		expect(guessTiles.elements()).toHaveLength(1);
 	});
 });

@@ -8,6 +8,7 @@
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/components/+Dialog.svelte';
+	import { moviesTable } from '$lib/types/supabasetables';
 
 	let {
 		data,
@@ -28,6 +29,7 @@
 	let showViewResults = $state(untrack(() => data.gameStatus !== 'in_progress'));
 
 	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
+	let guessedMovieIds = $derived(guesses.map((g) => g.movieId));
 	let targetMovie: TargetMovie | null | undefined = $state(null);
 	let isSearching: boolean = $state(false);
 	let showSearchDropdown: boolean = $state(true);
@@ -78,7 +80,10 @@
 			}
 
 			let json = await response.json();
-			searchResults = json as SearchResponse;
+			let results = json as SearchResponse;
+			markAnyResultsAsAlreadyGuessed(results);
+
+			searchResults = results;
 		} catch (e) { 
 			// don't throw for aborted exceptions, we can expect those.
 			if (e instanceof DOMException && e.name === 'AbortError') return;
@@ -195,6 +200,16 @@
 	 */
 	function onSearchBarFocus(): void {
 		showSearchDropdown = true;
+	}
+
+	/**
+	 * Marks any search result already in the guess list as already guessed.
+	 * @param searchResponse
+	 */
+	function markAnyResultsAsAlreadyGuessed(searchResponse: SearchResponse) {
+		searchResponse
+		.results
+		.forEach((sr) => sr.alreadyGuessed = guessedMovieIds.includes(sr.id));
 	}
 </script>
 

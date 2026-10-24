@@ -88,6 +88,7 @@ export function generateGuessResponse(
   }
 
   return {
+    movieId: guessMovie.id,
     title: guessMovie.title,
     image: guessMovie.poster_path ? `${PUBLIC_TMDB_THUMB_URL}${guessMovie.poster_path}` : null,
     yearResult: { 
