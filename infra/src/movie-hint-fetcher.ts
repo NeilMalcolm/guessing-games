@@ -94,7 +94,12 @@ async function getMovieHintFromTmdbApi(movie: MoviesResult): Promise<TmdbHintRes
  * @returns a raw buffer of the image, downsized, in webp format.
  */
 async function pixelatePosterForHint(hint: TmdbHintResult) : Promise<Buffer> {
-  const response = await fetch(`https://image.tmdb.org/t/p/w342${hint.poster_path}`);
+  const response = await fetch(`https://image.tmdb.org/t/p/w342${hint.poster_path}`, {
+        headers: {
+          Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+          accept: "application/json"
+        }
+      });
 
   if (!response.ok) {
     throw new Error(`Failed to retrieve poster data for '${hint.poster_path}': ${response.status}`);
@@ -114,14 +119,20 @@ async function pixelatePosterForHint(hint: TmdbHintResult) : Promise<Buffer> {
  * @param pixelatedKey the key used to uniquely identify a pixelated image in R2. 
  */
 async function writeHintToDatabase(hint: TmdbHintResult, pixelatedImageKey: string) {
-    await supabase
+    const { error } = await supabase
         .from('movie_hints')
         .upsert({
             movie_id: hint.id,
             poster_key: pixelatedImageKey,
-            keywords: hint.keywords,
+            keywords: hint.keywords.keywords.map((m) => m.name),
             tagline: hint.tagline
         });
+
+    if (error)
+    {
+      logger.error(`Error occurred when writing hint to database for movie ${hint.id}`);
+      throw error;
+    }
 }
 
 /**
@@ -134,7 +145,7 @@ async function uploadToR2Bucket(pixelatedPosterBuffer: Buffer, key: string, cont
     await r2Client.send(
       new PutObjectCommand({
           Bucket: process.env.R2_BUCKET_NAME!,
-          Key: key,
+          Key: `posters/${key}.webp`,
           Body: pixelatedPosterBuffer,
           ContentType: contentType
       })
@@ -153,10 +164,14 @@ export const handler = async (event: any) => {
 
     // 2. For each movie, fetch the results, pixelate the poster, upload to R2 
     // and write hint to database.
-    movieBatch.forEach(async (movie) => {
+    await movieBatch.forEach(async (movie) => {
         
         // 2a. Fetch the required hint data from the TMDB API
         const hint = await getMovieHintFromTmdbApi(movie);
+
+        if (!hint.poster_path) {
+          return;
+        }
         
         // 2b. Pixelate poster and write to database.
         let pixelatedPosterBuffer = await pixelatePosterForHint(hint);
