@@ -148,6 +148,8 @@
 		newestGuessIndex = 0;
 		guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
+
+		// only populated at the end of the game if lost/won
 		targetMovie = sessionData.targetMovie;
 	}
 
