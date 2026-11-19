@@ -93,3 +93,74 @@ describe('mapGameSessionToClientResponse targetMovie video URL exposure', () => 
 		});
 	});
 });
+
+describe('mapGameSessionToClientResponse hints mapping', () => {
+	const movieWithHints: Movie = {
+		...mockMovie,
+		hints: {
+			movie_id: 1,
+			tagline: 'Mischief. Mayhem. Soap.',
+			keywords: ['dual identity', 'support group', 'nihilism'],
+			poster_key: 'posters/1.webp',
+			created_at: '2026-01-01T00:00:00Z',
+			hints_fetched_at: '2026-01-01T00:00:00Z'
+		}
+	};
+
+	it('returns empty availableHints and usedHints when movie has no hints', () => {
+		const session = createSession('in_progress');
+		const result = mapGameSessionToClientResponse(session, mockMovie);
+
+		expect(result.availableHints).toEqual([]);
+		expect(result.usedHints).toEqual([]);
+	});
+
+	it('returns all non-empty hint types in availableHints when none are taken', () => {
+		const moviePartialHints: Movie = {
+			...mockMovie,
+			hints: {
+				movie_id: 1,
+				tagline: '   ',
+				keywords: ['dual identity'],
+				poster_key: 'posters/1.webp',
+				created_at: '2026-01-01T00:00:00Z',
+				hints_fetched_at: '2026-01-01T00:00:00Z'
+			}
+		};
+		const session = createSession('in_progress');
+		const result = mapGameSessionToClientResponse(session, moviePartialHints);
+
+		expect(result.availableHints).toEqual(['keywords', 'poster']);
+		expect(result.usedHints).toEqual([]);
+	});
+
+	it('populates usedHints with values and excludes them from availableHints', () => {
+		const session: GameSessionResponse = {
+			...createSession('in_progress'),
+			taken_hints: [
+				{
+					id: 'hint-1',
+					game_id: 'session-123',
+					hint_type: 'tagline',
+					unlocked_at_guess: 6,
+					created_at: '2026-10-12T00:01:00Z'
+				},
+				{
+					id: 'hint-2',
+					game_id: 'session-123',
+					hint_type: 'poster',
+					unlocked_at_guess: 9,
+					created_at: '2026-10-12T00:02:00Z'
+				}
+			]
+		};
+
+		const result = mapGameSessionToClientResponse(session, movieWithHints);
+
+		expect(result.usedHints).toEqual([
+			{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.' },
+			{ hintType: 'poster', value: 'posters/1.webp' }
+		]);
+		expect(result.availableHints).toEqual(['keywords']);
+	});
+});
