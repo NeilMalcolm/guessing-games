@@ -76,9 +76,25 @@ export interface GameSessionGuess {
 }
 
 /**
+ * Allowed hint categories for a game session.
+ */
+export const HINT_TYPES = ['tagline', 'keywords', 'poster'] as const;
+export type HintType = (typeof HINT_TYPES)[number];;
+
+export const gameSessionHintsTable = 'game_session_hints' satisfies TableName;
+/**
+ * Represents a row in the `public.game_session_hints` table.
+ * Tracks which hints have been unlocked and used in a game session.
+ */
+export type GameSessionHint = Omit<Tables<'game_session_hints'>, 'hint_type'> & {
+  hint_type: HintType;
+};
+
+/**
  * Represents the full game session response including its history of guesses and joined movie data.
  */
 export interface GameSessionResponse extends GameSession {
   guesses: GameSessionGuess[];
+  hints?: GameSessionHint[];
 }
 
