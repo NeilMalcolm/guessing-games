@@ -25,6 +25,7 @@ export type Movie = Omit<Tables<'movies'>, 'cast_members' | 'certifications' | '
   video?: string | null;
   cast_members: CastMember[];
   certifications: Record<string, string>;
+  hints?: MovieHints | null;
 };
 
 export const movieHintsTable = 'movie_hints' satisfies TableName;
@@ -95,6 +96,6 @@ export type GameSessionHint = Omit<Tables<'game_session_hints'>, 'hint_type'> & 
  */
 export interface GameSessionResponse extends GameSession {
   guesses: GameSessionGuess[];
-  hints?: GameSessionHint[];
+  taken_hints?: GameSessionHint[];
 }
 

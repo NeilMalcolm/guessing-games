@@ -1,4 +1,4 @@
-import type { GameSessionStatus } from "./supabasetables";
+import type { GameSessionStatus, HintType } from "./supabasetables";
 
 export interface GuessResponse {
   movieId: number;
@@ -15,10 +15,17 @@ export interface GuessResponse {
   status: GameSessionStatus;
 }
 
+export interface UsedHint {
+  hintType: HintType;
+  value: string | string[];
+}
+
 export interface GameSessionClientResponse {
   guesses: GuessResponse[];
   gameStatus: GameSessionStatus;
-  targetMovie?: TargetMovie | null
+  targetMovie?: TargetMovie | null;
+  availableHints?: HintType[];
+  usedHints?: UsedHint[];
 }
 
 export interface TargetMovie { 

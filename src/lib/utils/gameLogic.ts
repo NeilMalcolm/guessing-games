@@ -1,5 +1,13 @@
-import { Match, type GuessResponse, type GameSessionClientResponse } from "$lib/types/guess";
-import type { Movie, GameSessionResponse, GameSessionStatus } from "$lib/types/supabasetables";
+import { Match, type GuessResponse, type GameSessionClientResponse, type UsedHint } from "$lib/types/guess";
+import {
+  HINT_TYPES,
+  type Movie,
+  type MovieHints,
+  type GameSessionHint,
+  type GameSessionResponse,
+  type GameSessionStatus,
+  type HintType
+} from "$lib/types/supabasetables";
 import { PUBLIC_TMDB_THUMB_URL } from "$env/static/public";
 
 const CAST_MEMBER_DISPLAY_COUNT: number = 5;
@@ -161,12 +169,51 @@ export function mapGameSessionToClientResponse(
     : {
       title: dailyMovie.title,
       videoUrl: dailyMovie.video ? `https://www.youtube.com/embed/${dailyMovie.video}` : null
-    }; 
+    };
 
+  const { availableHints, usedHints } = mapHintsForClient(
+    gameSession.taken_hints ?? [],
+    dailyMovie.hints
+  );
 
   return {
     guesses: mappedGuesses,
     gameStatus: gameSession.status,
-    targetMovie: targetMovie
+    targetMovie: targetMovie,
+    availableHints,
+    usedHints
   };
+}
+
+function getHintValue(
+  movieHints: MovieHints | null | undefined,
+  hintType: HintType
+): string | string[] | null {
+  if (!movieHints) return null;
+  if (hintType === 'tagline') return movieHints.tagline?.trim() ? movieHints.tagline : null;
+  if (hintType === 'keywords') return (movieHints.keywords?.length ?? 0) > 0 ? movieHints.keywords : null;
+  if (hintType === 'poster') return movieHints.poster_key || null;
+  return null;
+}
+
+function mapHintsForClient(
+  takenHints: GameSessionHint[],
+  movieHints: MovieHints | null | undefined
+): { availableHints: HintType[]; usedHints: UsedHint[] } {
+  const takenHintTypes = takenHints.map((h) => h.hint_type);
+
+  const usedHints: UsedHint[] = [];
+  for (const taken of takenHints) {
+    const value = getHintValue(movieHints, taken.hint_type);
+    if (value) {
+      usedHints.push({ hintType: taken.hint_type, value });
+    }
+  }
+
+  const availableHints = HINT_TYPES.filter(
+    (hintType) => !takenHintTypes.some(t => t === hintType) 
+      && getHintValue(movieHints, hintType) !== null
+  );
+
+  return { availableHints, usedHints };
 }
