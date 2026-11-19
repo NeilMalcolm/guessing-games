@@ -78,7 +78,12 @@ async function getMovieBatchFromDatabase() : Promise<MoviesResult[]> {
  * @returns an object containing the necessary data. Includes keywords, tagline and poster.
  */
 async function getMovieHintFromTmdbApi(movie: MoviesResult): Promise<TmdbHintResult> {
-  const response = await fetch(`${TMDB_BASE_URL}/movie/${movie.id}?append_to_response=keywords`);
+  const response = await fetch(`${TMDB_BASE_URL}/movie/${movie.id}?append_to_response=keywords`, {
+        headers: {
+          Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+          accept: "application/json"
+        }
+      });
   
   if (!response.ok) {
     throw new Error(`Failed to retrieve hint data from TMDB API for '${movie.id}': ${response.status}`);
@@ -94,12 +99,7 @@ async function getMovieHintFromTmdbApi(movie: MoviesResult): Promise<TmdbHintRes
  * @returns a raw buffer of the image, downsized, in webp format.
  */
 async function pixelatePosterForHint(hint: TmdbHintResult) : Promise<Buffer> {
-  const response = await fetch(`https://image.tmdb.org/t/p/w342${hint.poster_path}`, {
-        headers: {
-          Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
-          accept: "application/json"
-        }
-      });
+  const response = await fetch(`https://image.tmdb.org/t/p/w342${hint.poster_path}`);
 
   if (!response.ok) {
     throw new Error(`Failed to retrieve poster data for '${hint.poster_path}': ${response.status}`);
@@ -130,7 +130,7 @@ async function writeHintToDatabase(hint: TmdbHintResult, pixelatedImageKey: stri
 
     if (error)
     {
-      logger.error(`Error occurred when writing hint to database for movie ${hint.id}`);
+      logger.error(`Error occurred when writing hint to database for movie ${hint.id}`, ({ error: error }));
       throw error;
     }
 }
@@ -164,27 +164,31 @@ export const handler = async (event: any) => {
 
     // 2. For each movie, fetch the results, pixelate the poster, upload to R2 
     // and write hint to database.
-    await movieBatch.forEach(async (movie) => {
-        
+    for (const movie of movieBatch) {
         // 2a. Fetch the required hint data from the TMDB API
         const hint = await getMovieHintFromTmdbApi(movie);
 
         if (!hint.poster_path) {
+          logger.warn(`No poster path found for movie ${movie.id}`);
           return;
         }
+
+        logger.debug(`Got valid hint data for movie ${movie.id}`);
         
         // 2b. Pixelate poster and write to database.
         let pixelatedPosterBuffer = await pixelatePosterForHint(hint);
         let posterKey = createRandomIdForPixelatedPosterPath();
 
+        logger.debug(`Uploading to database for movie ${movie.id}`);
         // 2c. Upload to R2
         let success = await uploadToR2Bucket(pixelatedPosterBuffer, 
           posterKey,
           ImageUploadContentType);
 
+        logger.debug(`Writing to database for movie ${movie.id}`);
         // 2d. Write to database
         await writeHintToDatabase(hint, posterKey);
-    });
+    };
     
 
 //   // 1. Fetch up to 100 movies where there's no video set yet.
