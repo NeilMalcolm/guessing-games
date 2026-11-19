@@ -97,5 +97,35 @@ export class InfraStack extends cdk.Stack {
       schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
     });
     movieVideoFetcherRule.addTarget(new targets.LambdaFunction(movieVideoFetcherLambda));
+
+    /**
+     *  movie hint fetcher configuration
+     */
+    
+    const hintFetcherLambda = new NodejsFunction(this, 'MovieHintFetcher', {
+      runtime: lambda.Runtime.NODEJS_24_X,
+      entry: path.join(__dirname, '../src/movie-hint-fetcher.ts'),
+      handler: 'handler',
+      timeout: cdk.Duration.minutes(5),
+      environment: {
+        SUPABASE_URL: process.env.SUPABASE_URL || '',
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+        TMDB_ACCESS_TOKEN: process.env.TMDB_ACCESS_TOKEN || '',
+        R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID || '',
+        R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || '',
+        R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || '',
+        R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY || ''
+      },  
+      bundling: {
+        nodeModules: ['sharp'],
+        forceDockerBundling: true,
+      },
+    });
+
+    // EventBridge Rule: every 2 minutes
+    const rule = new events.Rule(this, 'HintFetcherScheduleRule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(2)),
+    });
+    rule.addTarget(new targets.LambdaFunction(hintFetcherLambda));
   }
 }

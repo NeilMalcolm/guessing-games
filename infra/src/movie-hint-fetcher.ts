@@ -15,7 +15,7 @@ const supabase = createClient(
 
 const TMDB_ACCESS_TOKEN = process.env.TMDB_ACCESS_TOKEN!;
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 30;
 
 // Cloudflare R2 client 
 const r2Client = new S3Client({
