@@ -18,7 +18,7 @@ import { GET } from './+server';
 
 function createEvent(urlStr: string, userId: string | null = 'user-1') {
 	return {
-		url: new URL(urlStr, 'http://localhost'),
+		url: new URL(urlStr, 'http://example.com'),
 		locals: {
 			safeGetSession: vi.fn().mockResolvedValue(
 				userId
