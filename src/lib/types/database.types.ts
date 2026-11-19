@@ -120,6 +120,41 @@ export type Database = {
 					}
 				];
 			};
+			movie_hints: {
+				Row: {
+					created_at: string;
+					hints_fetched_at: string;
+					keywords: string[];
+					movie_id: number;
+					poster_key: string | null;
+					tagline: string | null;
+				};
+				Insert: {
+					created_at?: string;
+					hints_fetched_at?: string;
+					keywords?: string[];
+					movie_id: number;
+					poster_key?: string | null;
+					tagline?: string | null;
+				};
+				Update: {
+					created_at?: string;
+					hints_fetched_at?: string;
+					keywords?: string[];
+					movie_id?: number;
+					poster_key?: string | null;
+					tagline?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'movie_hints_movie_id_fkey';
+						columns: ['movie_id'];
+						isOneToOne: true;
+						referencedRelation: 'movies';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 			movies: {
 				Row: {
 					box_office: number | null;
@@ -182,6 +217,15 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
+			movie_search: {
+				Args: { search_term: string };
+				Returns: {
+					id: number;
+					poster_path: string;
+					release_year: number;
+					title: string;
+				}[];
+			};
 			record_guess_atomic: {
 				Args: {
 					p_game_id: string;
@@ -192,15 +236,6 @@ export type Database = {
 					p_user_id: string;
 				};
 				Returns: Json;
-			};
-			movie_search: {
-				Args: { search_term: string };
-				Returns: {
-					id: number;
-					poster_path: string;
-					release_year: number;
-					title: string;
-				}[];
 			};
 			show_limit: { Args: never; Returns: number };
 			show_trgm: { Args: { '': string }; Returns: string[] };
