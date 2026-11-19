@@ -27,6 +27,13 @@ export type Movie = Omit<Tables<'movies'>, 'cast_members' | 'certifications' | '
   certifications: Record<string, string>;
 };
 
+export const movieHintsTable = 'movie_hints' satisfies TableName;
+/**
+ * Represents a row in the `public.movie_hints` table.
+ * Server-only hint data (tagline, top keywords and the R2 key of the pixellated poster) for a movie.
+ */
+export type MovieHints = Tables<'movie_hints'>;
+
 /**
  * Represents a daily movie challenge joined with its full movie record.
  * Used to fetch the target movie and any custom unlockable hints for a given play date.
