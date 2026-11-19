@@ -1,0 +1,252 @@
+import { createClient } from "@supabase/supabase-js";
+import { Logger } from "@aws-lambda-powertools/logger";
+import sharp from 'sharp';
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import crypto from "node:crypto";
+
+const logger = new Logger({ serviceName: 'movie-hint-fetcher' });
+const ImageUploadContentType: string = "image/webp";
+
+// Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const TMDB_ACCESS_TOKEN = process.env.TMDB_ACCESS_TOKEN!;
+const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+const BATCH_SIZE = 10;
+
+// Cloudflare R2 client 
+const r2Client = new S3Client({
+  region: "auto",
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+});
+
+interface TmdbHintResult {
+  id: string,
+  poster_path: string;
+  tagline: string;
+  keywords: KeywordCollection;
+}
+
+interface KeywordCollection {
+  keywords: Keyword[];
+}
+
+interface Keyword { 
+    id: string,
+    name: string 
+}
+
+interface MoviesResult {
+    id: number
+}
+
+/**
+ * Retrieves a batch of movies from our system's movies table. 
+ * @returns an array of MovieResult objects containing the id of the movies in this batch. 
+ */
+async function getMovieBatchFromDatabase() : Promise<MoviesResult[]> {
+
+    // batch of movies without any hints
+    const { data: movies, error: fetchError } = await supabase
+        .from("movies")
+        .select("id, hint:movie_hints(movie_id)")
+        .is("hint", null)
+        .order("id", { ascending: true })
+        .limit(BATCH_SIZE);
+
+    if (fetchError) {
+        logger.error("Failed to query movies", { error: fetchError });
+        throw fetchError;
+    }
+
+    return (movies ?? []).map(m => 
+    ({ 
+        id: m.id 
+    }));
+}
+
+/**
+ * Fetches the movie hint details from the TMDB API. 
+ * @param movie the movie from our system to be queried for against the TMDB API. 
+ * @returns an object containing the necessary data. Includes keywords, tagline and poster.
+ */
+async function getMovieHintFromTmdbApi(movie: MoviesResult): Promise<TmdbHintResult> {
+  const response = await fetch(`${TMDB_BASE_URL}/movie/${movie.id}?append_to_response=keywords`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to retrieve hint data from TMDB API for '${movie.id}': ${response.status}`);
+  }
+
+  let rawResponse = await response.json();
+  return rawResponse as TmdbHintResult;
+}
+
+/**
+ * 
+ * @param hint pixelates the poster path within the given hint data. 
+ * @returns a raw buffer of the image, downsized, in webp format.
+ */
+async function pixelatePosterForHint(hint: TmdbHintResult) : Promise<Buffer> {
+  const response = await fetch(`https://image.tmdb.org/t/p/w342${hint.poster_path}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to retrieve poster data for '${hint.poster_path}': ${response.status}`);
+  }
+
+  const rawImageData = Buffer.from(await response.arrayBuffer());
+
+  return sharp(rawImageData)
+    .resize(20, 30, { fit : "fill" })
+    .webp({ quality: 80 })
+    .toBuffer();
+}
+
+/**
+ * Handles writing the hint data to the movie_hints table.
+ * @param hint the hint data from the TMDB API.
+ * @param pixelatedKey the key used to uniquely identify a pixelated image in R2. 
+ */
+async function writeHintToDatabase(hint: TmdbHintResult, pixelatedImageKey: string) {
+    await supabase
+        .from('movie_hints')
+        .upsert({
+            movie_id: hint.id,
+            poster_key: pixelatedImageKey,
+            keywords: hint.keywords,
+            tagline: hint.tagline
+        });
+}
+
+/**
+ * Handles uploading the raw image buffer to the the Cloudflare R2 bucket.
+ * @param pixelatedPosterBuffer the buffer containing the raw image data.
+ * @param key the unique identifier for the image.
+ * @param contentType the content type of the image.
+ */
+async function uploadToR2Bucket(pixelatedPosterBuffer: Buffer, key: string, contentType: string) {
+    await r2Client.send(
+      new PutObjectCommand({
+          Bucket: process.env.R2_BUCKET_NAME!,
+          Key: key,
+          Body: pixelatedPosterBuffer,
+          ContentType: contentType
+      })
+    );
+}
+
+function createRandomIdForPixelatedPosterPath(): string {
+    return crypto.randomUUID().toString();
+}
+
+export const handler = async (event: any) => {
+    logger.info("Starting movie hint fetcher...");
+
+    // 1. Fetch the batch of movies without hints from the database.
+    const movieBatch = await getMovieBatchFromDatabase();
+
+    // 2. For each movie, fetch the results, pixelate the poster, upload to R2 
+    // and write hint to database.
+    movieBatch.forEach(async (movie) => {
+        
+        // 2a. Fetch the required hint data from the TMDB API
+        const hint = await getMovieHintFromTmdbApi(movie);
+        
+        // 2b. Pixelate poster and write to database.
+        let pixelatedPosterBuffer = await pixelatePosterForHint(hint);
+        let posterKey = createRandomIdForPixelatedPosterPath();
+
+        // 2c. Upload to R2
+        let success = await uploadToR2Bucket(pixelatedPosterBuffer, 
+          posterKey,
+          ImageUploadContentType);
+
+        // 2d. Write to database
+        await writeHintToDatabase(hint, posterKey);
+    });
+    
+
+//   // 1. Fetch up to 100 movies where there's no video set yet.
+//   const { data: movies, error: fetchError } = await supabase
+//     .from("movies")
+//     .select("id, title")
+//     .is("video", null)
+//     .order("id", { ascending: true })
+//     .limit(BATCH_SIZE);
+
+//   if (fetchError) {
+//     logger.error("Failed to query movies", { error: fetchError });
+//     throw fetchError;
+//   }
+
+//   if (!movies || movies.length === 0) {
+//     logger.info("No movies found with video = null. All caught up.");
+//     return { processed: 0 };
+//   }
+
+//   logger.info(`Found ${movies.length} movies to fetch videos for.`);
+
+//   let updatedCount = 0;
+//   let notFoundCount = 0;
+
+//   // 2. For each movie, fetch videos from TMDB and update Supabase
+//   for (const movie of movies) {
+//     try {
+//       const response = await fetch(`${TMDB_BASE_URL}/movie/${movie.id}/videos`, {
+//         headers: {
+//           Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+//           accept: "application/json",
+//         },
+//       });
+
+//       if (!response.ok) {
+//         logger.warn(`Failed to fetch videos from TMDB for movie ${movie.id} (${movie.title})`, {
+//           status: response.status,
+//           statusText: response.statusText,
+//         });
+//         continue;
+//       }
+
+//       const data = (await response.json()) as TmdbVideosResponse;
+//       const youtubeSlug = selectBestYoutubeSlug(data.results || []);
+
+//       if (youtubeSlug) {
+//         const { error: updateError } = await supabase
+//           .from("movies")
+//           .update({ video: youtubeSlug })
+//           .eq("id", movie.id);
+
+//         if (updateError) {
+//           logger.error(`Failed to update video column for movie ${movie.id}`, { error: updateError });
+//         } else {
+//           updatedCount++;
+//           logger.info(`Updated movie ${movie.id} (${movie.title}) with video slug: ${youtubeSlug}`);
+//         }
+//       } else {
+//         notFoundCount++;
+//         logger.info(`No YouTube video found for movie ${movie.id} (${movie.title})`);
+//       }
+//     } catch (err: any) {
+//       logger.error(`Error processing video for movie ${movie.id}`, { err });
+//     }
+//   }
+
+//   logger.info("Finished batch movie video fetcher run", {
+//     totalQueried: movies.length,
+//     updatedCount,
+//     notFoundCount,
+//   });
+
+//   return {
+//     processed: movies.length,
+//     updated: updatedCount,
+//     notFound: notFoundCount,
+//   };
+};
+
