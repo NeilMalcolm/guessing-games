@@ -245,7 +245,7 @@ describe('POST /movies/hint', () => {
 		).rejects.toMatchObject({ status: 400 });
 	});
 
-	it('returns 500 when requested hint was already used', async () => {
+	it('returns 400 when requested hint was already used', async () => {
 		mockQueries({
 			sessionResult: {
 				data: {
@@ -273,7 +273,7 @@ describe('POST /movies/hint', () => {
 
 		await expect(
 			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
-		).rejects.toMatchObject({ status: 500 });
+		).rejects.toMatchObject({ status: 400 });
 	});
 
 	it('returns 404 when the requested hint has no value for the movie', async () => {

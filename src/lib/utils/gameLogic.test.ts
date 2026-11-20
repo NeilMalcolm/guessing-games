@@ -125,7 +125,7 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 		};
 		const result = mapGameSessionToClientResponse(session, mockMovie);
 
-		expect(result.availableHints).toEqual({ unusedHintsCount: 1, hints: [] });
+		expect(result.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
 		expect(result.usedHints).toEqual([]);
 	});
 
