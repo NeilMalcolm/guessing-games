@@ -79,8 +79,11 @@ export interface GameSessionGuess {
 /**
  * Allowed hint categories for a game session.
  */
-export const HINT_TYPES = ['tagline', 'keywords', 'poster'] as const;
-export type HintType = (typeof HINT_TYPES)[number];;
+export const HINT_TYPE_TAGLINE = 'tagline';
+export const HINT_TYPE_KEYWORDS = 'keywords';
+export const HINT_TYPE_POSTER = 'poster';
+export const HINT_TYPES = [HINT_TYPE_TAGLINE, HINT_TYPE_KEYWORDS, HINT_TYPE_POSTER] as const;
+export type HintType = (typeof HINT_TYPES)[number];
 
 export const gameSessionHintsTable = 'game_session_hints' satisfies TableName;
 /**

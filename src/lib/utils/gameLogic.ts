@@ -171,9 +171,12 @@ export function mapGameSessionToClientResponse(
       videoUrl: dailyMovie.video ? `https://www.youtube.com/embed/${dailyMovie.video}` : null
     };
 
+  const guessCount = (gameSession.guesses ?? []).filter((g) => !g.is_correct).length;
   const { availableHints, usedHints } = mapHintsForClient(
     gameSession.taken_hints ?? [],
-    dailyMovie.hints
+    dailyMovie.hints,
+    guessCount,
+    gameSession.status
   );
 
   return {
@@ -196,9 +199,20 @@ function getHintValue(
   return null;
 }
 
+const HINT_UNLOCK_THRESHOLD_LOWER: number = 6;
+const HINT_UNLOCK_THRESHOLD_HIGHER: number = 9;
+
+export function getUnlockedHintCount(unsuccessfulGuessCount: number): number {
+  if (unsuccessfulGuessCount >= HINT_UNLOCK_THRESHOLD_LOWER) return 2;
+  if (unsuccessfulGuessCount >= HINT_UNLOCK_THRESHOLD_HIGHER) return 1;
+  return 0;
+}
+
 function mapHintsForClient(
   takenHints: GameSessionHint[],
-  movieHints: MovieHints | null | undefined
+  movieHints: MovieHints | null | undefined,
+  guessCount: number,
+  status: GameSessionStatus
 ): { availableHints: HintType[]; usedHints: UsedHint[] } {
   const takenHintTypes = takenHints.map((h) => h.hint_type);
 
@@ -210,10 +224,16 @@ function mapHintsForClient(
     }
   }
 
-  const availableHints = HINT_TYPES.filter(
-    (hintType) => !takenHintTypes.some(t => t === hintType) 
-      && getHintValue(movieHints, hintType) !== null
-  );
+  const canUnlockHint =
+    status === 'in_progress' && takenHints.length < getUnlockedHintCount(guessCount);
+
+  // if the hint has not been used
+  const availableHints = canUnlockHint
+    ? HINT_TYPES.filter(
+        (hintType) =>
+          !takenHintTypes.some((t) => t === hintType) && getHintValue(movieHints, hintType) !== null
+      )
+    : [];
 
   return { availableHints, usedHints };
 }

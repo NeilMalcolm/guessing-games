@@ -1,10 +1,11 @@
-import { json } from '@sveltejs/kit';
+import { json, error as jsonError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { supabaseAdmin } from '$lib/supabaseAdmin';
 import { logger } from '@sentry/sveltekit';
-import { HINT_TYPES } from '$lib/types/supabasetables';
-import { parseAndValidatePlayDate, getRequiredDailyMovie } from '$lib/server/gameSession';
-
+import { HINT_TYPE_KEYWORDS, HINT_TYPE_POSTER, HINT_TYPE_TAGLINE, HINT_TYPES, type MovieHints } from '$lib/types/supabasetables';
+import { parseAndValidatePlayDate, getRequiredDailyMovie, getGameSession } from '$lib/server/gameSession';
+import { getUnlockedHintCount } from '$lib/utils/gameLogic';
+import { PUBLIC_R2_IMAGE_URL } from '$env/static/public';
 /**
  * GET endpoint will return the available hint categories to the user based on the daily movie
  * and any hints they have used in their session.
@@ -70,8 +71,62 @@ export const GET: RequestHandler = async ({ url, locals }) => {
  * @param locals 
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
+    const body = await request.json().catch(() => ({}));
+    const playDate = parseAndValidatePlayDate(body?.date);
+    const hint = body.hint;
 
-    return json('');
+    const dailyMovie = await getRequiredDailyMovie(playDate);
+
+    if (!dailyMovie) {
+        throw jsonError(500, 'Could not find movie.');
+    }
+    const { user } = await locals.safeGetSession();
+
+    if (!user) {
+        throw jsonError(401, 'Could not find user.');
+    }
+
+    const gameSession = await getGameSession(user.id, dailyMovie.id);
+
+    if (!gameSession) {
+        throw jsonError(400, 'Could not find game.');
+    }
+
+    let availableHints = getUnlockedHintCount(gameSession.guesses.length);
+
+    // We cannot take a hint if there are no hints available, or we've already made more than
+    // the available number of guesses.
+    if (availableHints === 0 || (gameSession.taken_hints ?? []).length >= availableHints) {
+        throw jsonError(400, 'Cannot make guess yet.');
+    }
+
+    // If we've used this hint, we cannot use it again.
+    if (gameSession.taken_hints?.some(h => h.hint_type === hint)) {
+        throw jsonError(500, 'Guess already used');
+    }
+
+    let hintValue = getHintValueFromHints(dailyMovie.hints as MovieHints, hint);
+    
+    return json({
+        hintType: hint,
+        hintValue: hintValue
+    });
+}
+
+function getHintValueFromHints(movieHint: MovieHints, chosenHint: string) { 
+    if (chosenHint === HINT_TYPE_KEYWORDS) {
+        return movieHint.keywords;
+    }
+    else if (chosenHint === HINT_TYPE_POSTER) { 
+        const url = new URL(PUBLIC_R2_IMAGE_URL);
+        url.pathname += url.pathname.endsWith('/') ? '' : '/';
+        return `${url}${movieHint.poster_key}.webp`;
+    }
+    else if (chosenHint === HINT_TYPE_TAGLINE) {
+        return movieHint.tagline;
+    }
+
+    throw jsonError(500, 'Unexpected hint');
 }
 
 

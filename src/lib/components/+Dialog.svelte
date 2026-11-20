@@ -5,7 +5,7 @@
         title: string,
         bodyText?: string,
         children?: Snippet,
-        acceptText?: string,
+        acceptText?: string | null,
         closeText?: string,
         open?: boolean;
         acceptAction?: () => void,
@@ -44,12 +44,14 @@
                 <p class="py-4">{bodyText}</p>
             {/if}
         <div class="modal-action flex gap-2">
-            <button class="btn btn-error" onclick={() => {
-                dialog?.close();
-                acceptAction?.();
-            }}>
-                {acceptText}
-            </button>
+            {#if acceptText}
+                <button class="btn btn-error" onclick={() => {
+                    dialog?.close();
+                    acceptAction?.();
+                }}>
+                    {acceptText}
+                </button>
+            {/if}
             <button class="btn btn-ghost" onclick={() => {
                 dialog?.close();
                 closeAction?.();

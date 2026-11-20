@@ -8,7 +8,7 @@
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/components/+Dialog.svelte';
-	import { moviesTable } from '$lib/types/supabasetables';
+	import { logger } from '@sentry/sveltekit';
 
 	let {
 		data,
@@ -36,6 +36,7 @@
 	let searchController: AbortController | null = null;
 
 	let showGiveUpModal: boolean = $state(false);
+	let showChooseHintModal: boolean = $state(false);
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
@@ -213,6 +214,31 @@
 		.results
 		.forEach((sr) => sr.alreadyGuessed = guessedMovieIds.includes(sr.id));
 	}
+
+	async function onHintButtonClick() {
+		showChooseHintModal = true;
+	}
+
+	async function takeHint(hint: string) {
+		let response = await fetch('movies/hint', {
+			method: 'POST',
+			body: JSON.stringify({ date: data.playDate, hint: hint.toString() })
+		})
+
+		if (!response.ok) {
+			logger.error('Error taking a hint {hint}, {response}', { hint: hint, response: response });
+			// TODO: show error.
+			return;
+		}
+
+		let json = await response.json();
+		let hintResult = json as {
+			hintType: string,
+			hintValue: string | string[]
+		};
+		
+		console.log(hintResult);
+	}
 </script>
 
 <main>
@@ -279,6 +305,22 @@
 			{/if}
 			<div class="mt-2">
 				<ul>
+					{#if data.availableHints}
+						<button class="btn" 
+								onclick={onHintButtonClick}>Hints</button>
+						
+					<Dialog title="Need a Hint?"
+							acceptText={null}
+							closeText="No Thanks"
+							bind:open={showChooseHintModal}>
+							<p class="text-base-content/60"></p> 
+								<div class="flex flex-row items-center gap-3 mt-4">
+									{#each data.availableHints as hint}
+										<button class="btn" onclick={() => takeHint(hint)}>{hint}</button>
+									{/each}
+								</div>
+					</Dialog>
+					{/if}
 					{#each guesses as guess, index (`${guess.title}_${guesses.length - index}`)}
 						<li>
 							<Guess
