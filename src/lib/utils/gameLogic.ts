@@ -8,7 +8,7 @@ import {
   type GameSessionStatus,
   type HintType
 } from "$lib/types/supabasetables";
-import { PUBLIC_TMDB_THUMB_URL } from "$env/static/public";
+import { PUBLIC_R2_IMAGE_URL, PUBLIC_TMDB_THUMB_URL } from "$env/static/public";
 
 const CAST_MEMBER_DISPLAY_COUNT: number = 5;
 
@@ -188,14 +188,37 @@ export function mapGameSessionToClientResponse(
   };
 }
 
-function getHintValue(
+export function buildPosterHintUrl(posterKey: string | null | undefined): string | null {
+  if (!posterKey || !PUBLIC_R2_IMAGE_URL) {
+    return null;
+  }
+
+  const url = new URL(PUBLIC_R2_IMAGE_URL);
+  url.pathname += url.pathname.endsWith('/') ? '' : '/';
+
+  
+  return `${url}${posterKey}.webp`;
+}
+
+const KEYWORD_COUNT: number = 5;
+
+export function getHintValue(
   movieHints: MovieHints | null | undefined,
   hintType: HintType
 ): string | string[] | null {
-  if (!movieHints) return null;
-  if (hintType === 'tagline') return movieHints.tagline?.trim() ? movieHints.tagline : null;
-  if (hintType === 'keywords') return (movieHints.keywords?.length ?? 0) > 0 ? movieHints.keywords : null;
-  if (hintType === 'poster') return movieHints.poster_key || null;
+  if (!movieHints) {
+    return null;
+  }
+
+  if (hintType === 'tagline') {
+    return movieHints.tagline?.trim() ? movieHints.tagline : null;
+  }
+  if (hintType === 'keywords') {
+    return (movieHints.keywords?.length ?? 0) > 0 ? movieHints.keywords.slice(0, KEYWORD_COUNT -1) : null;
+  }
+  if (hintType === 'poster') {
+    return buildPosterHintUrl(movieHints.poster_key);
+  }
   return null;
 }
 
@@ -203,8 +226,8 @@ const HINT_UNLOCK_THRESHOLD_LOWER: number = 6;
 const HINT_UNLOCK_THRESHOLD_HIGHER: number = 9;
 
 export function getUnlockedHintCount(unsuccessfulGuessCount: number): number {
-  if (unsuccessfulGuessCount >= HINT_UNLOCK_THRESHOLD_LOWER) return 2;
-  if (unsuccessfulGuessCount >= HINT_UNLOCK_THRESHOLD_HIGHER) return 1;
+  if (unsuccessfulGuessCount >= HINT_UNLOCK_THRESHOLD_HIGHER) return 2;
+  if (unsuccessfulGuessCount >= HINT_UNLOCK_THRESHOLD_LOWER) return 1;
   return 0;
 }
 

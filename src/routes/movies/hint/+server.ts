@@ -2,68 +2,9 @@ import { json, error as jsonError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { supabaseAdmin } from '$lib/supabaseAdmin';
 import { logger } from '@sentry/sveltekit';
-import { HINT_TYPE_KEYWORDS, HINT_TYPE_POSTER, HINT_TYPE_TAGLINE, HINT_TYPES, type MovieHints } from '$lib/types/supabasetables';
+import { GAME_STATUS_IN_PROGRESS, HINT_TYPES, type HintType } from '$lib/types/supabasetables';
 import { parseAndValidatePlayDate, getRequiredDailyMovie, getGameSession } from '$lib/server/gameSession';
-import { getUnlockedHintCount } from '$lib/utils/gameLogic';
-import { PUBLIC_R2_IMAGE_URL } from '$env/static/public';
-/**
- * GET endpoint will return the available hint categories to the user based on the daily movie
- * and any hints they have used in their session.
- * @param url the request URL, optionally containing a `date` query param (YYYY-MM-DD, defaults to today)
- * @param locals app locals
- * @returns list of hint options
- */
-export const GET: RequestHandler = async ({ url, locals }) => {
-    // Get the date from the query and fetch the daily_movie by the date.
-	const playDate = parseAndValidatePlayDate(url.searchParams.get('date'));
-	const dailyMovie = await getRequiredDailyMovie(playDate);
-
-    // get user/session details
-	const { session, user } = await locals.safeGetSession();
-
-	if (!user?.id) {
-		logger.error(`Could not get user during hint fetch for ${playDate}`);
-		return json({ availableHints: [] }, { status: 400 });
-	}
-
-    // get the game session for this user for the movie.
-	const { data, error } = await supabaseAdmin
-		.from('game_sessions')
-		.select(
-			`
-			id,
-			user_id,
-			target_movie_id,
-			session_hints: game_session_hints(
-				id,
-				game_id,
-				hint_type,
-				unlocked_at_guess,
-				created_at
-			)
-			`
-		)
-		.eq('user_id', user.id)
-		.eq('target_movie_id', dailyMovie.id)
-		.maybeSingle();
-
-	if (error) {
-		logger.error(`Error fetching game session during hint GET`, {
-			session,
-			user,
-			error
-		});
-
-		return json({ availableHints: [] }, { status: 500 });
-	}
-
-    // return available hints to frontend
-	const availableHints = getHintsFromSessionHints(data?.session_hints ?? []);
-
-	return json({
-		availableHints
-	});
-};
+import { getHintValue, getUnlockedHintCount } from '$lib/utils/gameLogic';
 
 /**
  * POST endpoint will retrieve the hint for the current game session
@@ -75,11 +16,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const playDate = parseAndValidatePlayDate(body?.date);
     const hint = body.hint;
 
+    if (typeof hint !== 'string' || !HINT_TYPES.includes(hint as HintType)) {
+        throw jsonError(400, 'Invalid hint type');
+    }
+    const chosenHint = hint as HintType;
+
     const dailyMovie = await getRequiredDailyMovie(playDate);
 
     if (!dailyMovie) {
         throw jsonError(500, 'Could not find movie.');
     }
+
+    if (!dailyMovie.hints) {
+        throw jsonError(500, 'No hints available');
+    }
+    
     const { user } = await locals.safeGetSession();
 
     if (!user) {
@@ -90,6 +41,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     if (!gameSession) {
         throw jsonError(400, 'Could not find game.');
+    }
+
+    if (gameSession.status !== GAME_STATUS_IN_PROGRESS) {
+        throw jsonError(400, 'Cannot get hint for a finished game.');
     }
 
     let availableHints = getUnlockedHintCount(gameSession.guesses.length);
@@ -105,40 +60,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         throw jsonError(500, 'Guess already used');
     }
 
-    let hintValue = getHintValueFromHints(dailyMovie.hints as MovieHints, hint);
+    const hintValue = getHintValue(dailyMovie.hints, chosenHint);
+    if (!hintValue) {
+        throw jsonError(404, 'Hint not available for this movie');
+    }
+
+    // Store the hint usage in the database
+    let result = await supabaseAdmin
+        .from('game_session_hints')
+        .insert({
+            game_id: gameSession.id,
+            hint_type: chosenHint,
+            unlocked_at_guess: gameSession.guesses.length,
+            created_at: new Date().toISOString(),
+        });
+
+    // any error storing the hint usage in the DB should result in an error
+    // surfacing and the hint not being returned. 
+    if (result.error) {
+        logger.error('')
+        throw jsonError(500, 'Unexpected error occurred');
+    }
     
     return json({
-        hintType: hint,
+        hintType: chosenHint,
         hintValue: hintValue
     });
 }
-
-function getHintValueFromHints(movieHint: MovieHints, chosenHint: string) { 
-    if (chosenHint === HINT_TYPE_KEYWORDS) {
-        return movieHint.keywords;
-    }
-    else if (chosenHint === HINT_TYPE_POSTER) { 
-        const url = new URL(PUBLIC_R2_IMAGE_URL);
-        url.pathname += url.pathname.endsWith('/') ? '' : '/';
-        return `${url}${movieHint.poster_key}.webp`;
-    }
-    else if (chosenHint === HINT_TYPE_TAGLINE) {
-        return movieHint.tagline;
-    }
-
-    throw jsonError(500, 'Unexpected hint');
-}
-
-
-function getHintsFromSessionHints(hints: { hint_type: string }[]): HintResponse[]  {
-    return HINT_TYPES.map(hintType => ({
-        hintType: hintType,
-        used: hints.some((h) => h.hint_type == hintType)
-    }));
-}
-
-export interface HintResponse {
-    hintType: string,
-    used: boolean
-}
-

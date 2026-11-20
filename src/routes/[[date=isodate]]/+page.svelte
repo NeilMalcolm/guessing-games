@@ -220,7 +220,7 @@
 	}
 
 	async function takeHint(hint: string) {
-		let response = await fetch('movies/hint', {
+		let response = await fetch('/movies/hint', {
 			method: 'POST',
 			body: JSON.stringify({ date: data.playDate, hint: hint.toString() })
 		})
