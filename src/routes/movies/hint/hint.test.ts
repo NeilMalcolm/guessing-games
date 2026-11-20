@@ -6,14 +6,7 @@ vi.mock('$lib/supabaseAdmin', () => ({
 	}
 }));
 
-vi.mock('@sentry/sveltekit', () => ({
-	logger: {
-		error: vi.fn()
-	}
-}));
-
 import { supabaseAdmin } from '$lib/supabaseAdmin';
-import { logger } from '@sentry/sveltekit';
 import { buildPosterHintUrl } from '$lib/utils/gameLogic';
 import { POST } from './+server';
 
@@ -80,18 +73,47 @@ function mockQueries({
 		},
 		error: null
 	} as { data: unknown; error: unknown },
-	insertResult = { error: null } as { error: unknown }
+	insertResult = { error: null } as { error: unknown },
+	reloadedSessionResult = undefined as { data: unknown; error: unknown } | undefined
 } = {}) {
 	const dailySingle = vi.fn().mockResolvedValue({ data: dailyMovie, error: null });
 	const dailyEq = vi.fn().mockReturnValue({ single: dailySingle });
 	const dailySelect = vi.fn().mockReturnValue({ eq: dailyEq });
 
-	const sessionMaybeSingle = vi.fn().mockResolvedValue(sessionResult);
+	let sessionCallCount = 0;
+	let insertedHint: Record<string, unknown> | null = null;
+
+	const sessionMaybeSingle = vi.fn().mockImplementation(async () => {
+		sessionCallCount += 1;
+		if (sessionCallCount > 1) {
+			if (reloadedSessionResult !== undefined) {
+				return reloadedSessionResult;
+			}
+			if (insertedHint && sessionResult.data) {
+				const session = sessionResult.data as Record<string, unknown> & {
+					taken_hints?: unknown[];
+				};
+				return {
+					...sessionResult,
+					data: {
+						...session,
+						taken_hints: [...(session.taken_hints ?? []), insertedHint]
+					}
+				};
+			}
+		}
+		return sessionResult;
+	});
 	const sessionEqMovie = vi.fn().mockReturnValue({ maybeSingle: sessionMaybeSingle });
 	const sessionEqUser = vi.fn().mockReturnValue({ eq: sessionEqMovie });
 	const sessionSelect = vi.fn().mockReturnValue({ eq: sessionEqUser });
 
-	const hintInsert = vi.fn().mockResolvedValue(insertResult);
+	const hintInsert = vi.fn().mockImplementation(async (row: Record<string, unknown>) => {
+		if (!insertResult.error) {
+			insertedHint = { id: 'hint-new', ...row };
+		}
+		return insertResult;
+	});
 
 	vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
 		if (table === 'daily_movies') {
@@ -114,7 +136,6 @@ describe('POST /movies/hint', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
 		vi.mocked(supabaseAdmin.from).mockReset();
-		vi.mocked(logger.error).mockReset();
 	});
 
 	afterEach(() => {
@@ -212,7 +233,7 @@ describe('POST /movies/hint', () => {
 					max_attempts: 10,
 					created_at: '2026-10-12T00:00:00Z',
 					updated_at: '2026-10-12T00:00:00Z',
-					guesses: createGuesses(5),
+					guesses: createGuesses(4),
 					taken_hints: []
 				},
 				error: null
@@ -271,7 +292,7 @@ describe('POST /movies/hint', () => {
 		).rejects.toMatchObject({ status: 404 });
 	});
 
-	it('returns 500 and logs error when inserting game_session_hints fails', async () => {
+	it('returns 500 when inserting game_session_hints fails', async () => {
 		mockQueries({
 			insertResult: { error: { message: 'Insert failed' } }
 		});
@@ -279,10 +300,19 @@ describe('POST /movies/hint', () => {
 		await expect(
 			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
 		).rejects.toMatchObject({ status: 500 });
-		expect(logger.error).toHaveBeenCalled();
 	});
 
-	it('inserts hint and returns tagline value on success', async () => {
+	it('returns 400 when reloaded game session is not found after inserting hint', async () => {
+		mockQueries({
+			reloadedSessionResult: { data: null, error: null }
+		});
+
+		await expect(
+			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
+		).rejects.toMatchObject({ status: 400 });
+	});
+
+	it('inserts hint and returns updated session with tagline on success', async () => {
 		const { dailyEq, hintInsert } = mockQueries();
 
 		const response = await POST(createEvent({ hint: 'tagline' }, 'user-1'));
@@ -295,30 +325,100 @@ describe('POST /movies/hint', () => {
 			created_at: '2026-10-12T12:00:00.000Z'
 		});
 		expect(await response.json()).toEqual({
-			hintType: 'tagline',
-			hintValue: 'Your mind is the scene of the crime.'
+			guesses: [],
+			gameStatus: 'in_progress',
+			targetMovie: null,
+			availableHints: {
+				unusedHintsCount: 0,
+				hints: []
+			},
+			usedHints: [
+				{
+					hintType: 'tagline',
+					value: 'Your mind is the scene of the crime.'
+				}
+			]
 		});
 	});
 
-	it('returns keywords hint value on success', async () => {
+	it('returns updated session with remaining available hints when 2 hints are unlocked', async () => {
+		mockQueries({
+			sessionResult: {
+				data: {
+					id: 'game-1',
+					user_id: 'user-1',
+					target_movie_id: 42,
+					status: 'in_progress',
+					max_attempts: 10,
+					created_at: '2026-10-12T00:00:00Z',
+					updated_at: '2026-10-12T00:00:00Z',
+					guesses: createGuesses(9),
+					taken_hints: []
+				},
+				error: null
+			}
+		});
+
+		const response = await POST(createEvent({ date: '2026-10-12', hint: 'tagline' }));
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({
+			guesses: [],
+			gameStatus: 'in_progress',
+			targetMovie: null,
+			availableHints: {
+				unusedHintsCount: 1,
+				hints: ['keywords', 'poster']
+			},
+			usedHints: [
+				{
+					hintType: 'tagline',
+					value: 'Your mind is the scene of the crime.'
+				}
+			]
+		});
+	});
+
+	it('returns updated session with keywords hint on success', async () => {
 		mockQueries();
 
 		const response = await POST(createEvent({ date: '2026-10-12', hint: 'keywords' }));
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({
-			hintType: 'keywords',
-			hintValue: ['dream', 'subconscious', 'heist']
+			guesses: [],
+			gameStatus: 'in_progress',
+			targetMovie: null,
+			availableHints: {
+				unusedHintsCount: 0,
+				hints: []
+			},
+			usedHints: [
+				{
+					hintType: 'keywords',
+					value: ['dream', 'subconscious', 'heist']
+				}
+			]
 		});
 	});
 
-	it('returns formatted poster URL on success', async () => {
+	it('returns updated session with formatted poster URL on success', async () => {
 		mockQueries();
 
 		const response = await POST(createEvent({ date: '2026-10-12', hint: 'poster' }));
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({
-			hintType: 'poster',
-			hintValue: buildPosterHintUrl('inception-key')
+			guesses: [],
+			gameStatus: 'in_progress',
+			targetMovie: null,
+			availableHints: {
+				unusedHintsCount: 0,
+				hints: []
+			},
+			usedHints: [
+				{
+					hintType: 'poster',
+					value: buildPosterHintUrl('inception-key')
+				}
+			]
 		});
 	});
 });

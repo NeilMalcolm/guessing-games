@@ -118,29 +118,29 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 		}));
 	}
 
-	it('returns empty availableHints and usedHints when movie has no hints', () => {
+	it('returns empty availableHints.hints and usedHints when movie has no hints', () => {
 		const session: GameSessionResponse = {
 			...createSession('in_progress'),
 			guesses: createWrongGuesses(6)
 		};
 		const result = mapGameSessionToClientResponse(session, mockMovie);
 
-		expect(result.availableHints).toEqual([]);
+		expect(result.availableHints).toEqual({ unusedHintsCount: 1, hints: [] });
 		expect(result.usedHints).toEqual([]);
 	});
 
-	it('returns empty availableHints before 6 unsuccessful guesses', () => {
+	it('returns empty availableHints before 5 unsuccessful guesses', () => {
 		const session: GameSessionResponse = {
 			...createSession('in_progress'),
-			guesses: createWrongGuesses(5)
+			guesses: createWrongGuesses(4)
 		};
 		const result = mapGameSessionToClientResponse(session, movieWithHints);
 
-		expect(result.availableHints).toEqual([]);
+		expect(result.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
 		expect(result.usedHints).toEqual([]);
 	});
 
-	it('returns non-empty hint types after 6 unsuccessful guesses when none are taken', () => {
+	it('returns non-empty hint types after 5 unsuccessful guesses when none are taken', () => {
 		const moviePartialHints: Movie = {
 			...mockMovie,
 			hints: {
@@ -158,7 +158,7 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 		};
 		const result = mapGameSessionToClientResponse(session, moviePartialHints);
 
-		expect(result.availableHints).toEqual(['keywords', 'poster']);
+		expect(result.availableHints).toEqual({ unusedHintsCount: 1, hints: ['keywords', 'poster'] });
 		expect(result.usedHints).toEqual([]);
 	});
 
@@ -169,7 +169,10 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 		};
 		const result = mapGameSessionToClientResponse(session, movieWithHints);
 
-		expect(result.availableHints).toEqual(['tagline', 'keywords', 'poster']);
+		expect(result.availableHints).toEqual({
+			unusedHintsCount: 1,
+			hints: ['tagline', 'keywords', 'poster']
+		});
 	});
 
 	it('returns empty availableHints on turns 6-8 once 1 hint has been taken', () => {
@@ -189,7 +192,7 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 		const result = mapGameSessionToClientResponse(session, movieWithHints);
 
 		expect(result.usedHints).toEqual([{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.' }]);
-		expect(result.availableHints).toEqual([]);
+		expect(result.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
 	});
 
 	it('allows taking 2 hints after 9 unsuccessful guesses if none were taken yet', () => {
@@ -198,11 +201,10 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 			guesses: createWrongGuesses(9),
 			taken_hints: []
 		};
-		expect(mapGameSessionToClientResponse(sessionWithZeroTaken, movieWithHints).availableHints).toEqual([
-			'tagline',
-			'keywords',
-			'poster'
-		]);
+		expect(mapGameSessionToClientResponse(sessionWithZeroTaken, movieWithHints).availableHints).toEqual({
+			unusedHintsCount: 2,
+			hints: ['tagline', 'keywords', 'poster']
+		});
 
 		const sessionWithOneTaken: GameSessionResponse = {
 			...sessionWithZeroTaken,
@@ -218,7 +220,10 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 		};
 		const resultOne = mapGameSessionToClientResponse(sessionWithOneTaken, movieWithHints);
 		expect(resultOne.usedHints).toEqual([{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.' }]);
-		expect(resultOne.availableHints).toEqual(['keywords', 'poster']);
+		expect(resultOne.availableHints).toEqual({
+			unusedHintsCount: 1,
+			hints: ['keywords', 'poster']
+		});
 
 		const sessionWithTwoTaken: GameSessionResponse = {
 			...sessionWithZeroTaken,
@@ -238,16 +243,16 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 			{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.' },
 			{ hintType: 'poster', value: buildPosterHintUrl('1') }
 		]);
-		expect(resultTwo.availableHints).toEqual([]);
+		expect(resultTwo.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
 	});
 
-	it('returns empty availableHints when game is finished even if hint slots were unused', () => {
+	it('returns empty availableHints.hints when game is finished even if hint slots were unused', () => {
 		const session: GameSessionResponse = {
 			...createSession('won'),
 			guesses: createWrongGuesses(9)
 		};
 		const result = mapGameSessionToClientResponse(session, movieWithHints);
 
-		expect(result.availableHints).toEqual([]);
+		expect(result.availableHints).toEqual({ unusedHintsCount: 2, hints: [] });
 	});
 });
