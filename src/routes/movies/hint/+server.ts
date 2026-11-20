@@ -1,10 +1,9 @@
 import { json, error as jsonError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { supabaseAdmin } from '$lib/supabaseAdmin';
-import { logger } from '@sentry/sveltekit';
 import { GAME_STATUS_IN_PROGRESS, HINT_TYPES, type HintType } from '$lib/types/supabasetables';
 import { parseAndValidatePlayDate, getRequiredDailyMovie, getGameSession } from '$lib/server/gameSession';
-import { getHintValue, getUnlockedHintCount } from '$lib/utils/gameLogic';
+import { getHintValue, getUnlockedHintCount, mapGameSessionToClientResponse } from '$lib/utils/gameLogic';
 
 /**
  * POST endpoint will retrieve the hint for the current game session
@@ -37,7 +36,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         throw jsonError(401, 'Could not find user.');
     }
 
-    const gameSession = await getGameSession(user.id, dailyMovie.id);
+    let gameSession = await getGameSession(user.id, dailyMovie.id);
 
     if (!gameSession) {
         throw jsonError(400, 'Could not find game.');
@@ -78,12 +77,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     // any error storing the hint usage in the DB should result in an error
     // surfacing and the hint not being returned. 
     if (result.error) {
-        logger.error('')
         throw jsonError(500, 'Unexpected error occurred');
     }
-    
-    return json({
-        hintType: chosenHint,
-        hintValue: hintValue
-    });
+
+    // Get fresh game session
+    gameSession = await getGameSession(user.id, dailyMovie.id);
+    if (!gameSession) {
+        throw jsonError(400, 'Could not find game.');
+    }
+
+    return json(mapGameSessionToClientResponse(gameSession, dailyMovie));
 }

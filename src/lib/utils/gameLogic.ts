@@ -172,7 +172,7 @@ export function mapGameSessionToClientResponse(
     };
 
   const guessCount = (gameSession.guesses ?? []).filter((g) => !g.is_correct).length;
-  const { availableHints, usedHints } = mapHintsForClient(
+  const { availableHints, usedHints, unusedHintsCount } = mapHintsForClient(
     gameSession.taken_hints ?? [],
     dailyMovie.hints,
     guessCount,
@@ -183,7 +183,10 @@ export function mapGameSessionToClientResponse(
     guesses: mappedGuesses,
     gameStatus: gameSession.status,
     targetMovie: targetMovie,
-    availableHints,
+    availableHints: {
+      unusedHintsCount: unusedHintsCount,
+      hints: availableHints
+    },
     usedHints
   };
 }
@@ -222,7 +225,7 @@ export function getHintValue(
   return null;
 }
 
-const HINT_UNLOCK_THRESHOLD_LOWER: number = 6;
+const HINT_UNLOCK_THRESHOLD_LOWER: number = 5;
 const HINT_UNLOCK_THRESHOLD_HIGHER: number = 9;
 
 export function getUnlockedHintCount(unsuccessfulGuessCount: number): number {
@@ -236,7 +239,7 @@ function mapHintsForClient(
   movieHints: MovieHints | null | undefined,
   guessCount: number,
   status: GameSessionStatus
-): { availableHints: HintType[]; usedHints: UsedHint[] } {
+): { availableHints: HintType[]; usedHints: UsedHint[], unusedHintsCount: number } {
   const takenHintTypes = takenHints.map((h) => h.hint_type);
 
   const usedHints: UsedHint[] = [];
@@ -247,8 +250,8 @@ function mapHintsForClient(
     }
   }
 
-  const canUnlockHint =
-    status === 'in_progress' && takenHints.length < getUnlockedHintCount(guessCount);
+  const unlockedHintCount: number = getUnlockedHintCount(guessCount);
+  const canUnlockHint = status === 'in_progress' && takenHints.length < unlockedHintCount;
 
   // if the hint has not been used
   const availableHints = canUnlockHint
@@ -258,5 +261,10 @@ function mapHintsForClient(
       )
     : [];
 
-  return { availableHints, usedHints };
+    console.log(`${unlockedHintCount} | ${takenHints.length}`)
+  return { 
+    availableHints, 
+    usedHints, 
+    unusedHintsCount: unlockedHintCount - takenHints.length
+  };
 }

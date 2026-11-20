@@ -15,6 +15,11 @@ export interface GuessResponse {
   status: GameSessionStatus;
 }
 
+export interface AvailableHints {
+  unusedHintsCount: number;
+  hints: HintType[];
+}
+
 export interface UsedHint {
   hintType: HintType;
   value: string | string[];
@@ -24,7 +29,7 @@ export interface GameSessionClientResponse {
   guesses: GuessResponse[];
   gameStatus: GameSessionStatus;
   targetMovie?: TargetMovie | null;
-  availableHints?: HintType[];
+  availableHints?: AvailableHints;
   usedHints?: UsedHint[];
 }
 

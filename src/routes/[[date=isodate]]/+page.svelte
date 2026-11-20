@@ -4,11 +4,13 @@
 	import SearchItem from '$lib/components/+SearchItem.svelte';
 	import Guess from '$lib/components/+Guess.svelte';
 	import ResultsModal from '$lib/components/+ResultsModal.svelte';
-	import type { GameSessionClientResponse, GuessResponse, TargetMovie } from '$lib/types/guess';
+	import type { AvailableHints, GameSessionClientResponse, GuessResponse, TargetMovie, UsedHint } from '$lib/types/guess';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/components/+Dialog.svelte';
 	import { logger } from '@sentry/sveltekit';
+	import { GAME_STATUS_IN_PROGRESS, HINT_TYPE_KEYWORDS, HINT_TYPE_POSTER, HINT_TYPE_TAGLINE, type HintType } from '$lib/types/supabasetables';
+	import { getInDisplayTextFormat} from '$lib/types/hint';
 
 	let {
 		data,
@@ -30,6 +32,10 @@
 
 	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
 	let guessedMovieIds = $derived(guesses.map((g) => g.movieId));
+
+	let availableHints: AvailableHints | undefined = $derived(data?.availableHints)
+	let usedHints: UsedHint[] = $derived(data?.usedHints ?? []);
+	
 	let targetMovie: TargetMovie | null | undefined = $state(null);
 	let isSearching: boolean = $state(false);
 	let showSearchDropdown: boolean = $state(true);
@@ -147,11 +153,7 @@
 		const sessionData: GameSessionClientResponse = await response.json();
 
 		newestGuessIndex = 0;
-		guesses = sessionData.guesses;
-		gameStatus = sessionData.gameStatus;
-
-		// only populated at the end of the game if lost/won
-		targetMovie = sessionData.targetMovie;
+		rehydrateSessionData(sessionData);
 	}
 
 	/**
@@ -180,9 +182,8 @@
 		}
 
 		const sessionData: GameSessionClientResponse = await response.json();
-		guesses = sessionData.guesses;
-		gameStatus = sessionData.gameStatus;
-		targetMovie = sessionData.targetMovie;
+		rehydrateSessionData(sessionData);
+		
 		showViewResults = true;
 		showResults = true;
 	}
@@ -225,19 +226,33 @@
 			body: JSON.stringify({ date: data.playDate, hint: hint.toString() })
 		})
 
+		console.log('takeHint');
+
 		if (!response.ok) {
 			logger.error('Error taking a hint {hint}, {response}', { hint: hint, response: response });
 			// TODO: show error.
 			return;
 		}
 
-		let json = await response.json();
-		let hintResult = json as {
-			hintType: string,
-			hintValue: string | string[]
-		};
+		console.log(response.body);
+		const sessionData: GameSessionClientResponse = await response.json();
+
+		console.log(sessionData);
 		
-		console.log(hintResult);
+		rehydrateSessionData(sessionData);
+
+		showChooseHintModal = false;
+	}
+
+	function rehydrateSessionData(sessionData: GameSessionClientResponse) { 
+		guesses = sessionData.guesses;
+		gameStatus = sessionData.gameStatus;
+		targetMovie = sessionData.targetMovie;
+		availableHints = sessionData.availableHints;
+		usedHints = sessionData.usedHints ?? [];
+		
+		// only populated at the end of the game if lost/won
+		targetMovie = sessionData.targetMovie;
 	}
 </script>
 
@@ -261,7 +276,6 @@
 						Give Up
 					</button>
 					<Dialog title="Give up on Guessing the Movie?"
-							
 							acceptText="Give Up" 
 							closeText="Keep Guessing"
 							acceptAction={onGiveUp}
@@ -305,21 +319,45 @@
 			{/if}
 			<div class="mt-2">
 				<ul>
-					{#if data.availableHints}
-						<button class="btn" 
-								onclick={onHintButtonClick}>Hints</button>
-						
-					<Dialog title="Need a Hint?"
-							acceptText={null}
-							closeText="No Thanks"
-							bind:open={showChooseHintModal}>
-							<p class="text-base-content/60"></p> 
-								<div class="flex flex-row items-center gap-3 mt-4">
-									{#each data.availableHints as hint}
-										<button class="btn" onclick={() => takeHint(hint)}>{hint}</button>
+					{#if (usedHints ?? []).length > 0}
+						{#each usedHints as hint}
+							{#if hint.hintType === HINT_TYPE_POSTER}
+								<img src="{hint.value as string}" alt="" class="w-130 h-200" style="image-rendering: pixelated">
+							{/if}
+							{#if hint.hintType === HINT_TYPE_TAGLINE}
+								<p>"{hint.value as string}"</p>
+							{/if}
+							{#if hint.hintType === HINT_TYPE_KEYWORDS}
+								<div class="flex flex-row gap-2">
+									{#each (hint.value as string[]) as keyword}
+										<div class="badge badge-outline badge-red  p-4">{keyword}</div>
 									{/each}
 								</div>
-					</Dialog>
+							{/if}
+						{/each}
+					{/if}
+					{#if (availableHints?.unusedHintsCount ?? 0) > 0}
+						
+						<div class="flex flex items-center p-3">
+							<p class="flex-grow text-base-content/60">You have unlocked a hint</p>
+							<button class="btn"  
+									onclick={onHintButtonClick}>Get Hint</button>
+							
+							<Dialog title="Need a Hint?"
+									acceptText={null}
+									closeText="No Thanks"
+									bind:open={showChooseHintModal}>
+									<p class="text-base-content/60">Choose from the following hint options:</p> 
+									<div class="flex flex-row items-center gap-3 mt-4">
+										{#each (availableHints?.hints ?? []) as hint}
+											<button class="btn btn-outline {usedHints?.some(x => x.hintType === hint) ? "disabled" : ""} flex-grow" 
+													onclick={() => takeHint(hint)}>
+												{getInDisplayTextFormat(hint)}
+											</button>
+										{/each}
+									</div>
+							</Dialog>
+						</div>
 					{/if}
 					{#each guesses as guess, index (`${guess.title}_${guesses.length - index}`)}
 						<li>
@@ -338,10 +376,11 @@
 	</div>
 </main>
 
+{#if gameStatus !== GAME_STATUS_IN_PROGRESS}
 <ResultsModal
 	bind:open={showResults}
 	{guesses}
 	{targetMovie}
 	won={gameStatus === 'won'}
-	playDate={data.playDate}
-/>
+	playDate={data.playDate}/>
+{/if}
