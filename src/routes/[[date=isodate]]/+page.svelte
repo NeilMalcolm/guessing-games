@@ -43,6 +43,7 @@
 
 	let showGiveUpModal: boolean = $state(false);
 	let showChooseHintModal: boolean = $state(false);
+	let showUsedHintsModal: boolean = $state(false);
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
@@ -317,26 +318,56 @@
 				</div>
 			{/if}
 			<div class="mt-2">
-				{#if (usedHints ?? []).length > 0}
-					{#each usedHints as hint}
-						{#if hint.hintType === HINT_TYPE_POSTER}
-							<img src="{hint.value as string}" alt="Pixelated poster" class="w-130 h-200" style="image-rendering: pixelated">
-						{/if}
-						{#if hint.hintType === HINT_TYPE_TAGLINE}
-							<p>"{hint.value as string}"</p>
-						{/if}
-						{#if hint.hintType === HINT_TYPE_KEYWORDS}
-							<div class="flex flex-row gap-2">
-								{#each (hint.value as string[]) as keyword}
-									<div class="badge badge-outline p-4">{keyword}</div>
-								{/each}
-							</div>
-						{/if}
-					{/each}
+				{#if usedHints.length > 0}
+					<div class="flex justify-end px-3 py-1">
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							onclick={() => (showUsedHintsModal = true)}>
+							Used Hints
+						</button>
+					</div>
+					<Dialog
+						title="Used Hints"
+						acceptText={null}
+						closeText={null}
+						bind:open={showUsedHintsModal}>
+						<div role="tablist" class="tabs tabs-box">
+							{#each usedHints as hint, idx (hint.hintType)}
+								<input
+									type="radio"
+									name="used_hints_tabs"
+									class="tab"
+									aria-label={getInDisplayTextFormat(hint.hintType)}
+									checked={idx === 0}
+								/>
+								<div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-4">
+									{#if hint.hintType === HINT_TYPE_POSTER}
+										<img
+											src={hint.value as string}
+											alt="Pixelated poster"
+											class="w-96 max-w-full h-auto mx-auto"
+											style="image-rendering: pixelated"
+										/>
+									{/if}
+									{#if hint.hintType === HINT_TYPE_TAGLINE}
+										<p>"{hint.value as string}"</p>
+									{/if}
+									{#if hint.hintType === HINT_TYPE_KEYWORDS}
+										<div class="flex flex-row flex-wrap gap-2">
+											{#each (hint.value as string[]) as keyword}
+												<div class="badge badge-outline p-4">{keyword}</div>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					</Dialog>
 				{/if}
 				{#if !isGameFinished && (availableHints?.unusedHintsCount ?? 0) > 0}
 					<div class="flex flex items-center p-3">
-						<p class="flex-grow text-base-content/60">You have unlocked {(availableHints?.unusedHintsCount ?? 0) > 1 ? 'hints' : ' a hint'}.</p>
+						<p class="flex-grow text-base-content/60">You have unlocked {(availableHints?.unusedHintsCount ?? 0) > 1 ? 'hints' : 'a hint'}.</p>
 						<button class="btn"  
 								onclick={onHintButtonClick}>Get Hint</button>
 						

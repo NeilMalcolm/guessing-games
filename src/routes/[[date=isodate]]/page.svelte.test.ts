@@ -572,6 +572,7 @@ describe('+page.svelte hints', () => {
 
 		await expect.element(page.getByText('You have unlocked a hint')).not.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Get Hint' })).not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: 'Used Hints' })).not.toBeInTheDocument();
 	});
 
 	it('does not show the hint prompt when the game is finished even if unusedHintsCount > 0', async () => {
@@ -586,6 +587,7 @@ describe('+page.svelte hints', () => {
 
 		await expect.element(page.getByText('You have unlocked a hint')).not.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Get Hint' })).not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: 'Used Hints' })).not.toBeInTheDocument();
 	});
 
 	it('opens the hint modal, submits the chosen hint, and renders the revealed hint', async () => {
@@ -642,12 +644,17 @@ describe('+page.svelte hints', () => {
 			hint: 'tagline'
 		});
 
-		await expect.element(page.getByText('"Your mind is the scene of the crime."')).toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: 'Used Hints' })).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: 'Get Hint' })).not.toBeInTheDocument();
 		await expect.element(page.getByRole('heading', { name: 'Need a Hint?' })).not.toBeInTheDocument();
+
+		await page.getByRole('button', { name: 'Used Hints' }).click();
+		const usedDialog = page.getByRole('dialog');
+		await expect.element(usedDialog.getByRole('heading', { name: 'Used Hints' })).toBeInTheDocument();
+		await expect.element(usedDialog.getByText('"Your mind is the scene of the crime."')).toBeInTheDocument();
 	});
 
-	it('renders used tagline, keywords, and poster hints', async () => {
+	it('opens Used Hints dialog with tabs-box radio tabs, no action buttons, and switches hint content', async () => {
 		render(Page, {
 			data: createPageData({
 				guesses: [createMockGuess(false)],
@@ -661,10 +668,29 @@ describe('+page.svelte hints', () => {
 			})
 		});
 
-		await expect.element(page.getByText('"Mischief. Mayhem. Soap."')).toBeInTheDocument();
-		await expect.element(page.getByText('dual identity')).toBeInTheDocument();
-		await expect.element(page.getByText('support group')).toBeInTheDocument();
+		const usedHintsBtn = page.getByRole('button', { name: 'Used Hints' });
+		await expect.element(usedHintsBtn).toBeInTheDocument();
+		await usedHintsBtn.click();
 
+		const dialog = page.getByRole('dialog');
+		await expect.element(dialog.getByRole('heading', { name: 'Used Hints' })).toBeInTheDocument();
+		expect(document.querySelector('dialog[open] .modal-action')).toBeNull();
+		await expect.element(dialog.getByRole('button', { name: 'OK' })).not.toBeInTheDocument();
+
+		const taglineTab = dialog.getByRole('radio', { name: 'Tagline' });
+		const keywordsTab = dialog.getByRole('radio', { name: 'Keywords' });
+		const posterTab = dialog.getByRole('radio', { name: 'Poster' });
+
+		await expect.element(taglineTab).toBeChecked();
+		await expect.element(dialog.getByText('"Mischief. Mayhem. Soap."')).toBeVisible();
+
+		await keywordsTab.click();
+		await expect.element(keywordsTab).toBeChecked();
+		await expect.element(dialog.getByText('dual identity')).toBeVisible();
+		await expect.element(dialog.getByText('support group')).toBeVisible();
+
+		await posterTab.click();
+		await expect.element(posterTab).toBeChecked();
 		const images = document.querySelectorAll('img[src="https://example.com/poster.webp"]');
 		expect(images).toHaveLength(1);
 	});
