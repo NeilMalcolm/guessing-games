@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mapGameSessionToClientResponse } from './gameLogic';
+import { buildPosterHintUrl, mapGameSessionToClientResponse } from './gameLogic';
 import type { GameSessionResponse, Movie } from '$lib/types/supabasetables';
 
 const mockMovie: Movie = {
@@ -101,7 +101,7 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 			movie_id: 1,
 			tagline: 'Mischief. Mayhem. Soap.',
 			keywords: ['dual identity', 'support group', 'nihilism'],
-			poster_key: 'posters/1.webp',
+			poster_key: '1',
 			created_at: '2026-01-01T00:00:00Z',
 			hints_fetched_at: '2026-01-01T00:00:00Z'
 		}
@@ -147,7 +147,7 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 				movie_id: 1,
 				tagline: '   ',
 				keywords: ['dual identity'],
-				poster_key: 'posters/1.webp',
+				poster_key: '1',
 				created_at: '2026-01-01T00:00:00Z',
 				hints_fetched_at: '2026-01-01T00:00:00Z'
 			}
@@ -236,7 +236,7 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 		const resultTwo = mapGameSessionToClientResponse(sessionWithTwoTaken, movieWithHints);
 		expect(resultTwo.usedHints).toEqual([
 			{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.' },
-			{ hintType: 'poster', value: 'posters/1.webp' }
+			{ hintType: 'poster', value: buildPosterHintUrl('1') }
 		]);
 		expect(resultTwo.availableHints).toEqual([]);
 	});

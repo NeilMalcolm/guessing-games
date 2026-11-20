@@ -14,13 +14,37 @@ vi.mock('@sentry/sveltekit', () => ({
 
 import { supabaseAdmin } from '$lib/supabaseAdmin';
 import { logger } from '@sentry/sveltekit';
-import { GET } from './+server';
+import { buildPosterHintUrl } from '$lib/utils/gameLogic';
+import { POST } from './+server';
 
 const NOW = new Date('2026-10-12T12:00:00Z');
 
-function createEvent(urlStr: string, userId: string | null = 'user-1') {
+const defaultHints = {
+	movie_id: 42,
+	tagline: 'Your mind is the scene of the crime.',
+	keywords: ['dream', 'subconscious', 'heist'],
+	poster_key: 'inception-key',
+	created_at: '2026-10-12T00:00:00Z',
+	hints_fetched_at: '2026-10-12T00:00:00Z'
+};
+
+function createGuesses(count: number) {
+	return Array.from({ length: count }, (_, idx) => ({
+		id: `guess-${idx + 1}`,
+		guess_number: idx + 1,
+		movie_id: 100 + idx,
+		is_correct: false,
+		created_at: '2026-10-12T00:00:00Z'
+	}));
+}
+
+function createEvent(body: unknown, userId: string | null = 'user-1') {
 	return {
-		url: new URL(urlStr, 'http://example.com'),
+		request: new Request('http://example.com/movies/hint', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		}),
 		locals: {
 			safeGetSession: vi.fn().mockResolvedValue(
 				userId
@@ -35,8 +59,28 @@ function createEvent(urlStr: string, userId: string | null = 'user-1') {
 }
 
 function mockQueries({
-	dailyMovie = { movie: { id: 42, title: 'Inception' } } as unknown,
-	sessionResult = { data: null, error: null } as { data: unknown; error: unknown }
+	dailyMovie = {
+		movie: {
+			id: 42,
+			title: 'Inception',
+			hints: defaultHints
+		}
+	} as unknown,
+	sessionResult = {
+		data: {
+			id: 'game-1',
+			user_id: 'user-1',
+			target_movie_id: 42,
+			status: 'in_progress',
+			max_attempts: 10,
+			created_at: '2026-10-12T00:00:00Z',
+			updated_at: '2026-10-12T00:00:00Z',
+			guesses: createGuesses(6),
+			taken_hints: []
+		},
+		error: null
+	} as { data: unknown; error: unknown },
+	insertResult = { error: null } as { error: unknown }
 } = {}) {
 	const dailySingle = vi.fn().mockResolvedValue({ data: dailyMovie, error: null });
 	const dailyEq = vi.fn().mockReturnValue({ single: dailySingle });
@@ -47,6 +91,8 @@ function mockQueries({
 	const sessionEqUser = vi.fn().mockReturnValue({ eq: sessionEqMovie });
 	const sessionSelect = vi.fn().mockReturnValue({ eq: sessionEqUser });
 
+	const hintInsert = vi.fn().mockResolvedValue(insertResult);
+
 	vi.mocked(supabaseAdmin.from).mockImplementation((table: string) => {
 		if (table === 'daily_movies') {
 			return { select: dailySelect } as any;
@@ -54,13 +100,16 @@ function mockQueries({
 		if (table === 'game_sessions') {
 			return { select: sessionSelect } as any;
 		}
+		if (table === 'game_session_hints') {
+			return { insert: hintInsert } as any;
+		}
 		throw new Error(`Unexpected table: ${table}`);
 	});
 
-	return { dailyEq, sessionEqUser, sessionEqMovie };
+	return { dailyEq, sessionEqUser, sessionEqMovie, hintInsert };
 }
 
-describe('GET /movies/hint', () => {
+describe('POST /movies/hint', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
@@ -73,90 +122,127 @@ describe('GET /movies/hint', () => {
 	});
 
 	it('rejects malformed date with 400', async () => {
-		await expect(GET(createEvent('/movies/hint?date=not-a-date'))).rejects.toMatchObject({
-			status: 400
-		});
+		await expect(
+			POST(createEvent({ date: 'not-a-date', hint: 'tagline' }))
+		).rejects.toMatchObject({ status: 400 });
 		expect(supabaseAdmin.from).not.toHaveBeenCalled();
 	});
 
 	it('rejects future date with 400', async () => {
-		await expect(GET(createEvent('/movies/hint?date=2026-10-13'))).rejects.toMatchObject({
-			status: 400
-		});
+		await expect(
+			POST(createEvent({ date: '2026-10-13', hint: 'tagline' }))
+		).rejects.toMatchObject({ status: 400 });
+		expect(supabaseAdmin.from).not.toHaveBeenCalled();
+	});
+
+	it('rejects invalid hint type with 400', async () => {
+		await expect(
+			POST(createEvent({ date: '2026-10-12', hint: 'invalid_hint' }))
+		).rejects.toMatchObject({ status: 400 });
 		expect(supabaseAdmin.from).not.toHaveBeenCalled();
 	});
 
 	it('returns 404 when no daily movie exists for date', async () => {
 		mockQueries({ dailyMovie: null });
 
-		await expect(GET(createEvent('/movies/hint?date=2026-10-12'))).rejects.toMatchObject({
-			status: 404
-		});
+		await expect(
+			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
+		).rejects.toMatchObject({ status: 404 });
 	});
 
-	it('returns 400 when user is not authenticated', async () => {
+	it('returns 500 when daily movie has no hints', async () => {
+		mockQueries({
+			dailyMovie: { movie: { id: 42, title: 'Inception', hints: null } }
+		});
+
+		await expect(
+			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
+		).rejects.toMatchObject({ status: 500 });
+	});
+
+	it('returns 401 when user is not authenticated', async () => {
 		mockQueries();
 
-		const response = await GET(createEvent('/movies/hint?date=2026-10-12', null));
-		expect(response.status).toBe(400);
-		expect(await response.json()).toEqual({ availableHints: [] });
-		expect(logger.error).toHaveBeenCalled();
+		await expect(
+			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }, null))
+		).rejects.toMatchObject({ status: 401 });
 	});
 
-	it('returns 500 when game_sessions query fails', async () => {
+	it('returns 400 when game session does not exist', async () => {
 		mockQueries({
-			sessionResult: {
-				data: null,
-				error: { message: 'Database error' }
-			}
-		});
-
-		const response = await GET(createEvent('/movies/hint?date=2026-10-12'));
-		expect(response.status).toBe(500);
-		expect(await response.json()).toEqual({ availableHints: [] });
-		expect(logger.error).toHaveBeenCalled();
-	});
-
-	it('defaults to today when date is omitted and returns all hints unused when no session exists yet', async () => {
-		const { dailyEq, sessionEqUser, sessionEqMovie } = mockQueries({
 			sessionResult: { data: null, error: null }
 		});
 
-		const response = await GET(createEvent('/movies/hint', 'user-1'));
-		expect(response.status).toBe(200);
-		expect(dailyEq).toHaveBeenCalledWith('play_date', '2026-10-12');
-		expect(sessionEqUser).toHaveBeenCalledWith('user_id', 'user-1');
-		expect(sessionEqMovie).toHaveBeenCalledWith('target_movie_id', 42);
-		expect(await response.json()).toEqual({
-			availableHints: [
-				{ hintType: 'tagline', used: false },
-				{ hintType: 'keywords', used: false },
-				{ hintType: 'poster', used: false }
-			]
-		});
+		await expect(
+			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
+		).rejects.toMatchObject({ status: 400 });
 	});
 
-	it('marks used hint types as used based on session_hints', async () => {
+	it('returns 400 when game is already finished', async () => {
 		mockQueries({
 			sessionResult: {
 				data: {
 					id: 'game-1',
 					user_id: 'user-1',
 					target_movie_id: 42,
-					session_hints: [
+					status: 'won',
+					max_attempts: 10,
+					created_at: '2026-10-12T00:00:00Z',
+					updated_at: '2026-10-12T00:00:00Z',
+					guesses: createGuesses(6),
+					taken_hints: []
+				},
+				error: null
+			}
+		});
+
+		await expect(
+			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
+		).rejects.toMatchObject({ status: 400 });
+	});
+
+	it('returns 400 when no hints are unlocked yet', async () => {
+		mockQueries({
+			sessionResult: {
+				data: {
+					id: 'game-1',
+					user_id: 'user-1',
+					target_movie_id: 42,
+					status: 'in_progress',
+					max_attempts: 10,
+					created_at: '2026-10-12T00:00:00Z',
+					updated_at: '2026-10-12T00:00:00Z',
+					guesses: createGuesses(5),
+					taken_hints: []
+				},
+				error: null
+			}
+		});
+
+		await expect(
+			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
+		).rejects.toMatchObject({ status: 400 });
+	});
+
+	it('returns 500 when requested hint was already used', async () => {
+		mockQueries({
+			sessionResult: {
+				data: {
+					id: 'game-1',
+					user_id: 'user-1',
+					target_movie_id: 42,
+					status: 'in_progress',
+					max_attempts: 10,
+					created_at: '2026-10-12T00:00:00Z',
+					updated_at: '2026-10-12T00:00:00Z',
+					guesses: createGuesses(9),
+					taken_hints: [
 						{
 							id: 'hint-1',
 							game_id: 'game-1',
 							hint_type: 'tagline',
 							unlocked_at_guess: 6,
 							created_at: '2026-10-12T12:00:00Z'
-						},
-						{
-							id: 'hint-2',
-							game_id: 'game-1',
-							hint_type: 'poster',
-							unlocked_at_guess: 9,
-							created_at: '2026-10-12T12:05:00Z'
 						}
 					]
 				},
@@ -164,14 +250,75 @@ describe('GET /movies/hint', () => {
 			}
 		});
 
-		const response = await GET(createEvent('/movies/hint?date=2026-10-12', 'user-1'));
+		await expect(
+			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
+		).rejects.toMatchObject({ status: 500 });
+	});
+
+	it('returns 404 when the requested hint has no value for the movie', async () => {
+		mockQueries({
+			dailyMovie: {
+				movie: {
+					id: 42,
+					title: 'Inception',
+					hints: { ...defaultHints, tagline: '   ' }
+				}
+			}
+		});
+
+		await expect(
+			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
+		).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('returns 500 and logs error when inserting game_session_hints fails', async () => {
+		mockQueries({
+			insertResult: { error: { message: 'Insert failed' } }
+		});
+
+		await expect(
+			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
+		).rejects.toMatchObject({ status: 500 });
+		expect(logger.error).toHaveBeenCalled();
+	});
+
+	it('inserts hint and returns tagline value on success', async () => {
+		const { dailyEq, hintInsert } = mockQueries();
+
+		const response = await POST(createEvent({ hint: 'tagline' }, 'user-1'));
+		expect(response.status).toBe(200);
+		expect(dailyEq).toHaveBeenCalledWith('play_date', '2026-10-12');
+		expect(hintInsert).toHaveBeenCalledWith({
+			game_id: 'game-1',
+			hint_type: 'tagline',
+			unlocked_at_guess: 6,
+			created_at: '2026-10-12T12:00:00.000Z'
+		});
+		expect(await response.json()).toEqual({
+			hintType: 'tagline',
+			hintValue: 'Your mind is the scene of the crime.'
+		});
+	});
+
+	it('returns keywords hint value on success', async () => {
+		mockQueries();
+
+		const response = await POST(createEvent({ date: '2026-10-12', hint: 'keywords' }));
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({
-			availableHints: [
-				{ hintType: 'tagline', used: true },
-				{ hintType: 'keywords', used: false },
-				{ hintType: 'poster', used: true }
-			]
+			hintType: 'keywords',
+			hintValue: ['dream', 'subconscious', 'heist']
+		});
+	});
+
+	it('returns formatted poster URL on success', async () => {
+		mockQueries();
+
+		const response = await POST(createEvent({ date: '2026-10-12', hint: 'poster' }));
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({
+			hintType: 'poster',
+			hintValue: buildPosterHintUrl('inception-key')
 		});
 	});
 });
