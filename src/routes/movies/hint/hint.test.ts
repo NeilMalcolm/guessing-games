@@ -335,7 +335,8 @@ describe('POST /movies/hint', () => {
 			usedHints: [
 				{
 					hintType: 'tagline',
-					value: 'Your mind is the scene of the crime.'
+					value: 'Your mind is the scene of the crime.',
+					unlockedAtGuess: 6
 				}
 			]
 		});
@@ -372,7 +373,8 @@ describe('POST /movies/hint', () => {
 			usedHints: [
 				{
 					hintType: 'tagline',
-					value: 'Your mind is the scene of the crime.'
+					value: 'Your mind is the scene of the crime.',
+					unlockedAtGuess: 9
 				}
 			]
 		});
@@ -394,7 +396,8 @@ describe('POST /movies/hint', () => {
 			usedHints: [
 				{
 					hintType: 'keywords',
-					value: ['dream', 'subconscious', 'heist']
+					value: ['dream', 'subconscious', 'heist'],
+					unlockedAtGuess: 6
 				}
 			]
 		});
@@ -416,7 +419,8 @@ describe('POST /movies/hint', () => {
 			usedHints: [
 				{
 					hintType: 'poster',
-					value: buildPosterHintUrl('inception-key')
+					value: buildPosterHintUrl('inception-key'),
+					unlockedAtGuess: 6
 				}
 			]
 		});

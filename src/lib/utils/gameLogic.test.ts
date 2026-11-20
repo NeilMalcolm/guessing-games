@@ -191,7 +191,7 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 		};
 		const result = mapGameSessionToClientResponse(session, movieWithHints);
 
-		expect(result.usedHints).toEqual([{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.' }]);
+		expect(result.usedHints).toEqual([{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.', unlockedAtGuess: 6 }]);
 		expect(result.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
 	});
 
@@ -219,7 +219,7 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 			]
 		};
 		const resultOne = mapGameSessionToClientResponse(sessionWithOneTaken, movieWithHints);
-		expect(resultOne.usedHints).toEqual([{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.' }]);
+		expect(resultOne.usedHints).toEqual([{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.', unlockedAtGuess: 9 }]);
 		expect(resultOne.availableHints).toEqual({
 			unusedHintsCount: 1,
 			hints: ['keywords', 'poster']
@@ -240,8 +240,8 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 		};
 		const resultTwo = mapGameSessionToClientResponse(sessionWithTwoTaken, movieWithHints);
 		expect(resultTwo.usedHints).toEqual([
-			{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.' },
-			{ hintType: 'poster', value: buildPosterHintUrl('1') }
+			{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.', unlockedAtGuess: 9 },
+			{ hintType: 'poster', value: buildPosterHintUrl('1'), unlockedAtGuess: 9 }
 		]);
 		expect(resultTwo.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
 	});

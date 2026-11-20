@@ -23,6 +23,7 @@ export interface AvailableHints {
 export interface UsedHint {
   hintType: HintType;
   value: string | string[];
+  unlockedAtGuess: number;
 }
 
 export interface GameSessionClientResponse {

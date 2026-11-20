@@ -243,11 +243,22 @@ function mapHintsForClient(
 ): { availableHints: HintType[]; usedHints: UsedHint[], unusedHintsCount: number } {
   const takenHintTypes = takenHints.map((h) => h.hint_type);
 
+  const sortedTakenHints = [...takenHints].sort((a, b) => {
+    if (a.unlocked_at_guess !== b.unlocked_at_guess) {
+      return a.unlocked_at_guess - b.unlocked_at_guess;
+    }
+    return a.created_at.localeCompare(b.created_at);
+  });
+
   const usedHints: UsedHint[] = [];
-  for (const taken of takenHints) {
+  for (const taken of sortedTakenHints) {
     const value = getHintValue(movieHints, taken.hint_type);
     if (value) {
-      usedHints.push({ hintType: taken.hint_type, value });
+      usedHints.push({
+        hintType: taken.hint_type,
+        value,
+        unlockedAtGuess: taken.unlocked_at_guess
+      });
     }
   }
 

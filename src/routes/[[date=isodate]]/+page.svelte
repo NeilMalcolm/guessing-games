@@ -43,7 +43,50 @@
 
 	let showGiveUpModal: boolean = $state(false);
 	let showChooseHintModal: boolean = $state(false);
-	let showUsedHintsModal: boolean = $state(false);
+	let showPosterModal: boolean = $state(false);
+	let activePosterUrl: string | null = $state(null);
+
+	type TimelineItem =
+		| { kind: 'guess'; guess: GuessResponse; guessNumber: number; guessIndex: number }
+		| { kind: 'hint'; hint: UsedHint };
+
+	let timelineItems: TimelineItem[] = $derived.by(() => {
+		const hintsByGuess = new Map<number, UsedHint[]>();
+		for (const hint of usedHints) {
+			const group = hintsByGuess.get(hint.unlockedAtGuess) ?? [];
+			group.push(hint);
+			hintsByGuess.set(hint.unlockedAtGuess, group);
+		}
+
+		const items: TimelineItem[] = [];
+		for (const [guessStep, hints] of [...hintsByGuess.entries()].sort((a, b) => b[0] - a[0])) {
+			if (guessStep > guesses.length) {
+				for (const hint of hints) {
+					items.push({ kind: 'hint', hint });
+				}
+			}
+		}
+
+		guesses.forEach((guess, index) => {
+			const guessNumber = guesses.length - index;
+			const hintsAfterGuess = hintsByGuess.get(guessNumber) ?? [];
+			for (const hint of hintsAfterGuess) {
+				items.push({ kind: 'hint', hint });
+			}
+			items.push({ kind: 'guess', guess, guessNumber, guessIndex: index });
+		});
+
+		for (const hint of hintsByGuess.get(0) ?? []) {
+			items.push({ kind: 'hint', hint });
+		}
+
+		return items;
+	});
+
+	function openPosterHint(url: string) {
+		activePosterUrl = url;
+		showPosterModal = true;
+	}
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
@@ -318,53 +361,6 @@
 				</div>
 			{/if}
 			<div class="mt-2">
-				{#if usedHints.length > 0}
-					<div class="flex justify-end px-3 py-1">
-						<button
-							type="button"
-							class="btn btn-outline btn-sm"
-							onclick={() => (showUsedHintsModal = true)}>
-							Used Hints
-						</button>
-					</div>
-					<Dialog
-						title="Used Hints"
-						acceptText={null}
-						closeText={null}
-						bind:open={showUsedHintsModal}>
-						<div role="tablist" class="tabs tabs-box">
-							{#each usedHints as hint, idx (hint.hintType)}
-								<input
-									type="radio"
-									name="used_hints_tabs"
-									class="tab"
-									aria-label={getInDisplayTextFormat(hint.hintType)}
-									checked={idx === 0}
-								/>
-								<div role="tabpanel" class="tab-content bg-base-100 border-base-300 rounded-box p-4">
-									{#if hint.hintType === HINT_TYPE_POSTER}
-										<img
-											src={hint.value as string}
-											alt="Pixelated poster"
-											class="w-96 max-w-full h-auto mx-auto"
-											style="image-rendering: pixelated"
-										/>
-									{/if}
-									{#if hint.hintType === HINT_TYPE_TAGLINE}
-										<p>"{hint.value as string}"</p>
-									{/if}
-									{#if hint.hintType === HINT_TYPE_KEYWORDS}
-										<div class="flex flex-row flex-wrap gap-2">
-											{#each (hint.value as string[]) as keyword}
-												<div class="badge badge-outline p-4">{keyword}</div>
-											{/each}
-										</div>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					</Dialog>
-				{/if}
 				{#if !isGameFinished && (availableHints?.unusedHintsCount ?? 0) > 0}
 					<div class="flex flex items-center p-3">
 						<p class="flex-grow text-base-content/60">You have unlocked {(availableHints?.unusedHintsCount ?? 0) > 1 ? 'hints' : 'a hint'}.</p>
@@ -389,18 +385,58 @@
 					</div>
 				{/if}
 				<ul>
-					{#each guesses as guess, index (`${guess.title}_${guesses.length - index}`)}
-						<li>
-							<Guess
-								{guess}
-								index={guesses.length - index}
-								animate={index === newestGuessIndex}
-								delay={guessRevealDelay}
-								onRevealFinished={onGuessRevealed}
-							/>
-						</li>
+					{#each timelineItems as item (item.kind === 'guess' ? `guess_${item.guess.title}_${item.guessNumber}` : `hint_${item.hint.hintType}`)}
+						{#if item.kind === 'hint'}
+							<li class="my-2">
+								<div class="divider text-xs text-base-content/60 my-1"></div>
+								{#if item.hint.hintType === HINT_TYPE_TAGLINE}
+									<div class="bg-base-200/60 rounded-box px-4 py-3 text-center italic">
+										"{item.hint.value as string}"
+									</div>
+								{:else if item.hint.hintType === HINT_TYPE_KEYWORDS}
+									<div class="bg-base-200/60 rounded-box px-4 py-3 flex flex-wrap justify-center gap-2">
+										{#each (item.hint.value as string[]) as keyword}
+											<span class="badge badge-outline text-base-content/70 border-base-content/70 p-3">{keyword}</span>
+										{/each}
+									</div>
+								{:else if item.hint.hintType === HINT_TYPE_POSTER}
+									<div class="flex justify-center py-1">
+										<button
+											type="button"
+											class="btn btn-outline btn-sm"
+											onclick={() => openPosterHint(item.hint.value as string)}>
+											View Poster
+										</button>
+									</div>
+								{/if}
+							</li>
+						{:else}
+							<li>
+								<Guess
+									guess={item.guess}
+									index={item.guessNumber}
+									animate={item.guessIndex === newestGuessIndex}
+									delay={guessRevealDelay}
+									onRevealFinished={onGuessRevealed}
+								/>
+							</li>
+						{/if}
 					{/each}
 				</ul>
+				<Dialog
+					title="Poster"
+					acceptText={null}
+					closeText={null}
+					bind:open={showPosterModal}>
+					{#if activePosterUrl}
+						<img
+							src={activePosterUrl}
+							alt="Pixelated poster"
+							class="w-96 max-w-full h-auto mx-auto"
+							style="image-rendering: pixelated"
+						/>
+					{/if}
+				</Dialog>
 			</div>
 		</div>
 	</div>
