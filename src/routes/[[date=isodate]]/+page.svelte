@@ -11,6 +11,8 @@
 	import { logger } from '@sentry/sveltekit';
 	import { GAME_STATUS_IN_PROGRESS, HINT_TYPE_KEYWORDS, HINT_TYPE_POSTER, HINT_TYPE_TAGLINE } from '$lib/types/supabasetables';
 	import { getInDisplayTextFormat} from '$lib/types/hint';
+	import Hint from '$lib/components/+Hint.svelte';
+	import TakeHintSection from '$lib/components/+TakeHintSection.svelte';
 
 	let {
 		data,
@@ -83,10 +85,6 @@
 		return items;
 	});
 
-	function openPosterHint(url: string) {
-		activePosterUrl = url;
-		showPosterModal = true;
-	}
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
@@ -362,53 +360,19 @@
 			{/if}
 			<div class="mt-2">
 				{#if !isGameFinished && (availableHints?.unusedHintsCount ?? 0) > 0}
-					<div class="flex flex items-center p-3">
-						<p class="flex-grow text-base-content/60">You have unlocked {(availableHints?.unusedHintsCount ?? 0) > 1 ? 'hints' : 'a hint'}.</p>
-						<button class="btn"  
-								onclick={onHintButtonClick}>Get Hint</button>
-						
-						<Dialog title="Need a Hint?"
-								acceptText={null}
-								closeText="No Thanks"
-								bind:open={showChooseHintModal}>
-								<p class="text-base-content/60">Choose from the following hint options:</p> 
-								<div class="flex flex-row items-center gap-3 mt-4">
-									{#each (availableHints?.hints ?? []) as hint}
-										<button class="btn btn-outline {usedHints?.some(x => x.hintType === hint) ? "disabled" : ""} flex-grow"
-												disabled={usedHints?.some(x => x.hintType === hint)} 
-												onclick={() => takeHint(hint)}>
-											{getInDisplayTextFormat(hint)}
-										</button>
-									{/each}
-								</div>
-						</Dialog>
-					</div>
+				<TakeHintSection {availableHints}
+								 {usedHints}
+								 {takeHint}
+								 {getInDisplayTextFormat}
+								 {onHintButtonClick}
+								 bind:showChooseHintModal={showChooseHintModal}/>
 				{/if}
 				<ul>
 					{#each timelineItems as item (item.kind === 'guess' ? `guess_${item.guess.title}_${item.guessNumber}` : `hint_${item.hint.hintType}`)}
 						{#if item.kind === 'hint'}
 							<li class="my-2">
-								<div class="divider text-xs text-base-content/60 my-1"></div>
-								{#if item.hint.hintType === HINT_TYPE_TAGLINE}
-									<div class="bg-base-200/60 rounded-box px-4 py-3 text-center italic">
-										"{item.hint.value as string}"
-									</div>
-								{:else if item.hint.hintType === HINT_TYPE_KEYWORDS}
-									<div class="bg-base-200/60 rounded-box px-4 py-3 flex flex-wrap justify-center gap-2">
-										{#each (item.hint.value as string[]) as keyword}
-											<span class="badge badge-outline text-base-content/70 border-base-content/70 p-3">{keyword}</span>
-										{/each}
-									</div>
-								{:else if item.hint.hintType === HINT_TYPE_POSTER}
-									<div class="flex justify-center py-1">
-										<button
-											type="button"
-											class="btn btn-outline btn-sm"
-											onclick={() => openPosterHint(item.hint.value as string)}>
-											View Poster
-										</button>
-									</div>
-								{/if}
+								<Hint hint={item.hint}
+									  bind:showPosterModal={showPosterModal}/>
 							</li>
 						{:else}
 							<li>
@@ -423,20 +387,6 @@
 						{/if}
 					{/each}
 				</ul>
-				<Dialog
-					title="Poster"
-					acceptText={null}
-					closeText={null}
-					bind:open={showPosterModal}>
-					{#if activePosterUrl}
-						<img
-							src={activePosterUrl}
-							alt="Pixelated poster"
-							class="w-96 max-w-full h-auto mx-auto"
-							style="image-rendering: pixelated"
-						/>
-					{/if}
-				</Dialog>
 			</div>
 		</div>
 	</div>

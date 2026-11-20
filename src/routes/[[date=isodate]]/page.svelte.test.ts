@@ -686,7 +686,7 @@ describe('+page.svelte hints', () => {
 		await viewPosterBtn.click();
 
 		const dialog = page.getByRole('dialog');
-		await expect.element(dialog.getByRole('heading', { name: 'Poster Hint' })).toBeInTheDocument();
+		await expect.element(dialog.getByRole('heading', { name: 'Poster' })).toBeInTheDocument();
 		expect(document.querySelector('dialog[open] .modal-action')).toBeNull();
 		const images = document.querySelectorAll('dialog[open] img[src="https://example.com/poster.webp"]');
 		expect(images).toHaveLength(1);
