@@ -9,7 +9,7 @@
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/components/+Dialog.svelte';
 	import { logger } from '@sentry/sveltekit';
-	import { GAME_STATUS_IN_PROGRESS, HINT_TYPE_KEYWORDS, HINT_TYPE_POSTER, HINT_TYPE_TAGLINE, type HintType } from '$lib/types/supabasetables';
+	import { GAME_STATUS_IN_PROGRESS, HINT_TYPE_KEYWORDS, HINT_TYPE_POSTER, HINT_TYPE_TAGLINE } from '$lib/types/supabasetables';
 	import { getInDisplayTextFormat} from '$lib/types/hint';
 
 	let {
@@ -24,17 +24,17 @@
 
 	let searchQuery = $state('');
 	let searchResults: SearchResponse | null = $state(null);
-	let gameStatus: string = $state(untrack(() => data.gameStatus ?? 'in_progress'));
-	let isGameFinished: boolean = $derived(gameStatus !== 'in_progress');
+	let gameStatus: string = $state(untrack(() => data.gameStatus ?? GAME_STATUS_IN_PROGRESS));
+	let isGameFinished: boolean = $derived(gameStatus !== GAME_STATUS_IN_PROGRESS);
 	let newestGuessIndex: number = $state(-1);
 	let showResults = $state(false);
-	let showViewResults = $state(untrack(() => data.gameStatus !== 'in_progress'));
+	let showViewResults = $state(untrack(() => data.gameStatus !== GAME_STATUS_IN_PROGRESS));
 
 	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
 	let guessedMovieIds = $derived(guesses.map((g) => g.movieId));
 
-	let availableHints: AvailableHints | undefined = $derived(data?.availableHints)
-	let usedHints: UsedHint[] = $derived(data?.usedHints ?? []);
+	let availableHints: AvailableHints | undefined = $state(untrack(() => data?.availableHints))
+	let usedHints: UsedHint[] = $state(untrack(() => data?.usedHints ?? []));
 	
 	let targetMovie: TargetMovie | null | undefined = $state(null);
 	let isSearching: boolean = $state(false);
@@ -46,9 +46,9 @@
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
-		gameStatus = data.gameStatus ?? 'in_progress';
+		gameStatus = data.gameStatus ?? GAME_STATUS_IN_PROGRESS;
 		targetMovie = data.targetMovie;
-		showViewResults = data.gameStatus !== 'in_progress';
+		showViewResults = data.gameStatus !== GAME_STATUS_IN_PROGRESS;
 	});
 
 	/**
@@ -223,10 +223,11 @@
 	async function takeHint(hint: string) {
 		let response = await fetch('/movies/hint', {
 			method: 'POST',
+			headers: {
+				'Content-Type' : 'application/json'
+			},
 			body: JSON.stringify({ date: data.playDate, hint: hint.toString() })
 		})
-
-		console.log('takeHint');
 
 		if (!response.ok) {
 			logger.error('Error taking a hint {hint}, {response}', { hint: hint, response: response });
@@ -234,11 +235,8 @@
 			return;
 		}
 
-		console.log(response.body);
 		const sessionData: GameSessionClientResponse = await response.json();
 
-		console.log(sessionData);
-		
 		rehydrateSessionData(sessionData);
 
 		showChooseHintModal = false;
@@ -247,7 +245,6 @@
 	function rehydrateSessionData(sessionData: GameSessionClientResponse) { 
 		guesses = sessionData.guesses;
 		gameStatus = sessionData.gameStatus;
-		targetMovie = sessionData.targetMovie;
 		availableHints = sessionData.availableHints;
 		usedHints = sessionData.usedHints ?? [];
 		
@@ -336,7 +333,7 @@
 							{/if}
 						{/each}
 					{/if}
-					{#if (availableHints?.unusedHintsCount ?? 0) > 0}
+					{#if !isGameFinished && (availableHints?.unusedHintsCount ?? 0) > 0}
 						
 						<div class="flex flex items-center p-3">
 							<p class="flex-grow text-base-content/60">You have unlocked a hint</p>
@@ -376,7 +373,7 @@
 	</div>
 </main>
 
-{#if gameStatus !== GAME_STATUS_IN_PROGRESS}
+{#if isGameFinished}
 <ResultsModal
 	bind:open={showResults}
 	{guesses}

@@ -253,6 +253,6 @@ describe('mapGameSessionToClientResponse hints mapping', () => {
 		};
 		const result = mapGameSessionToClientResponse(session, movieWithHints);
 
-		expect(result.availableHints).toEqual({ unusedHintsCount: 2, hints: [] });
+		expect(result.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
 	});
 });

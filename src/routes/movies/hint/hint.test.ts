@@ -171,14 +171,14 @@ describe('POST /movies/hint', () => {
 		).rejects.toMatchObject({ status: 404 });
 	});
 
-	it('returns 500 when daily movie has no hints', async () => {
+	it('returns 404 when daily movie has no hints', async () => {
 		mockQueries({
 			dailyMovie: { movie: { id: 42, title: 'Inception', hints: null } }
 		});
 
 		await expect(
 			POST(createEvent({ date: '2026-10-12', hint: 'tagline' }))
-		).rejects.toMatchObject({ status: 500 });
+		).rejects.toMatchObject({ status: 404 });
 	});
 
 	it('returns 401 when user is not authenticated', async () => {

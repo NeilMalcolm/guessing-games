@@ -218,7 +218,7 @@ export function getHintValue(
     return movieHints.tagline?.trim() ? movieHints.tagline : null;
   }
   if (hintType === 'keywords') {
-    return (movieHints.keywords?.length ?? 0) > 0 ? movieHints.keywords.slice(0, KEYWORD_COUNT -1) : null;
+    return (movieHints.keywords?.length ?? 0) > 0 ? movieHints.keywords.slice(0, KEYWORD_COUNT) : null;
   }
   if (hintType === 'poster') {
     return buildPosterHintUrl(movieHints.poster_key);
@@ -256,7 +256,7 @@ function mapHintsForClient(
   const unusedHintsCount = status === GAME_STATUS_IN_PROGRESS 
     ? unlockedHintCount - takenHints.length
     : 0; 
-    
+
   // if the hint has not been used
   const availableHints = canUnlockHint
     ? HINT_TYPES.filter(

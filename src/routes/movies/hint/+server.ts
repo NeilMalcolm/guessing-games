@@ -22,12 +22,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     const dailyMovie = await getRequiredDailyMovie(playDate);
 
-    if (!dailyMovie) {
-        throw jsonError(500, 'Could not find movie.');
-    }
-
     if (!dailyMovie.hints) {
-        throw jsonError(500, 'No hints available');
+        throw jsonError(404, 'No hints available');
     }
     
     const { user } = await locals.safeGetSession();
@@ -51,7 +47,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     // We cannot take a hint if there are no hints available, or we've already made more than
     // the available number of guesses.
     if (availableHints === 0 || (gameSession.taken_hints ?? []).length >= availableHints) {
-        throw jsonError(400, 'Cannot make guess yet.');
+        throw jsonError(400, 'Cannot take hint yet.');
     }
 
     // If we've used this hint, we cannot use it again.
