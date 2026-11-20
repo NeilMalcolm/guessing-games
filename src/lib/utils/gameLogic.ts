@@ -253,7 +253,7 @@ function mapHintsForClient(
 
   const unlockedHintCount: number = getUnlockedHintCount(guessCount);
   const canUnlockHint = status === GAME_STATUS_IN_PROGRESS  && takenHints.length < unlockedHintCount;
-  const unusedHintsCount = status === GAME_STATUS_IN_PROGRESS 
+  let unusedHintsCount = status === GAME_STATUS_IN_PROGRESS 
     ? unlockedHintCount - takenHints.length
     : 0; 
 
@@ -264,6 +264,10 @@ function mapHintsForClient(
           !takenHintTypes.some((t) => t === hintType) && getHintValue(movieHints, hintType) !== null
       )
     : [];
+
+  unusedHintsCount = unusedHintsCount > availableHints.length 
+    ? availableHints.length 
+    : unusedHintsCount;
 
   return { 
     availableHints, 

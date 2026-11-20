@@ -49,6 +49,8 @@
 		gameStatus = data.gameStatus ?? GAME_STATUS_IN_PROGRESS;
 		targetMovie = data.targetMovie;
 		showViewResults = data.gameStatus !== GAME_STATUS_IN_PROGRESS;
+		availableHints = data.availableHints;
+		usedHints = data.usedHints ?? [];
 	});
 
 	/**
@@ -315,47 +317,47 @@
 				</div>
 			{/if}
 			<div class="mt-2">
-				<ul>
-					{#if (usedHints ?? []).length > 0}
-						{#each usedHints as hint}
-							{#if hint.hintType === HINT_TYPE_POSTER}
-								<img src="{hint.value as string}" alt="" class="w-130 h-200" style="image-rendering: pixelated">
-							{/if}
-							{#if hint.hintType === HINT_TYPE_TAGLINE}
-								<p>"{hint.value as string}"</p>
-							{/if}
-							{#if hint.hintType === HINT_TYPE_KEYWORDS}
-								<div class="flex flex-row gap-2">
-									{#each (hint.value as string[]) as keyword}
-										<div class="badge badge-outline badge-red  p-4">{keyword}</div>
+				{#if (usedHints ?? []).length > 0}
+					{#each usedHints as hint}
+						{#if hint.hintType === HINT_TYPE_POSTER}
+							<img src="{hint.value as string}" alt="Pixelated poster" class="w-130 h-200" style="image-rendering: pixelated">
+						{/if}
+						{#if hint.hintType === HINT_TYPE_TAGLINE}
+							<p>"{hint.value as string}"</p>
+						{/if}
+						{#if hint.hintType === HINT_TYPE_KEYWORDS}
+							<div class="flex flex-row gap-2">
+								{#each (hint.value as string[]) as keyword}
+									<div class="badge badge-outline p-4">{keyword}</div>
+								{/each}
+							</div>
+						{/if}
+					{/each}
+				{/if}
+				{#if !isGameFinished && (availableHints?.unusedHintsCount ?? 0) > 0}
+					<div class="flex flex items-center p-3">
+						<p class="flex-grow text-base-content/60">You have unlocked {(availableHints?.unusedHintsCount ?? 0) > 1 ? 'hints' : ' a hint'}.</p>
+						<button class="btn"  
+								onclick={onHintButtonClick}>Get Hint</button>
+						
+						<Dialog title="Need a Hint?"
+								acceptText={null}
+								closeText="No Thanks"
+								bind:open={showChooseHintModal}>
+								<p class="text-base-content/60">Choose from the following hint options:</p> 
+								<div class="flex flex-row items-center gap-3 mt-4">
+									{#each (availableHints?.hints ?? []) as hint}
+										<button class="btn btn-outline {usedHints?.some(x => x.hintType === hint) ? "disabled" : ""} flex-grow"
+												disabled={usedHints?.some(x => x.hintType === hint)} 
+												onclick={() => takeHint(hint)}>
+											{getInDisplayTextFormat(hint)}
+										</button>
 									{/each}
 								</div>
-							{/if}
-						{/each}
-					{/if}
-					{#if !isGameFinished && (availableHints?.unusedHintsCount ?? 0) > 0}
-						
-						<div class="flex flex items-center p-3">
-							<p class="flex-grow text-base-content/60">You have unlocked a hint</p>
-							<button class="btn"  
-									onclick={onHintButtonClick}>Get Hint</button>
-							
-							<Dialog title="Need a Hint?"
-									acceptText={null}
-									closeText="No Thanks"
-									bind:open={showChooseHintModal}>
-									<p class="text-base-content/60">Choose from the following hint options:</p> 
-									<div class="flex flex-row items-center gap-3 mt-4">
-										{#each (availableHints?.hints ?? []) as hint}
-											<button class="btn btn-outline {usedHints?.some(x => x.hintType === hint) ? "disabled" : ""} flex-grow" 
-													onclick={() => takeHint(hint)}>
-												{getInDisplayTextFormat(hint)}
-											</button>
-										{/each}
-									</div>
-							</Dialog>
-						</div>
-					{/if}
+						</Dialog>
+					</div>
+				{/if}
+				<ul>
 					{#each guesses as guess, index (`${guess.title}_${guesses.length - index}`)}
 						<li>
 							<Guess

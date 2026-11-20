@@ -52,7 +52,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     // If we've used this hint, we cannot use it again.
     if (gameSession.taken_hints?.some(h => h.hint_type === hint)) {
-        throw jsonError(500, 'Guess already used');
+        throw jsonError(400, 'Hint already used');
     }
 
     const hintValue = getHintValue(dailyMovie.hints, chosenHint);
