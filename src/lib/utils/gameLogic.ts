@@ -6,7 +6,8 @@ import {
   type GameSessionHint,
   type GameSessionResponse,
   type GameSessionStatus,
-  type HintType
+  type HintType,
+  GAME_STATUS_IN_PROGRESS
 } from "$lib/types/supabasetables";
 import { PUBLIC_R2_IMAGE_URL, PUBLIC_TMDB_THUMB_URL } from "$env/static/public";
 
@@ -251,8 +252,11 @@ function mapHintsForClient(
   }
 
   const unlockedHintCount: number = getUnlockedHintCount(guessCount);
-  const canUnlockHint = status === 'in_progress' && takenHints.length < unlockedHintCount;
-
+  const canUnlockHint = status === GAME_STATUS_IN_PROGRESS  && takenHints.length < unlockedHintCount;
+  const unusedHintsCount = status === GAME_STATUS_IN_PROGRESS 
+    ? unlockedHintCount - takenHints.length
+    : 0; 
+    
   // if the hint has not been used
   const availableHints = canUnlockHint
     ? HINT_TYPES.filter(
@@ -261,10 +265,9 @@ function mapHintsForClient(
       )
     : [];
 
-    console.log(`${unlockedHintCount} | ${takenHints.length}`)
   return { 
     availableHints, 
     usedHints, 
-    unusedHintsCount: unlockedHintCount - takenHints.length
+    unusedHintsCount 
   };
 }
