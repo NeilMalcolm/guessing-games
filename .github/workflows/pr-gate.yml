@@ -49,6 +49,8 @@ jobs:
 
       - name: Test
         run: npm run test
+        env:
+          PUBLIC_R2_IMAGE_URL: 'example'
 
       - name: Install infra dependencies
         run: npm ci
