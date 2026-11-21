@@ -9,8 +9,7 @@
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/components/+Dialog.svelte';
 	import { logger } from '@sentry/sveltekit';
-	import { GAME_STATUS_IN_PROGRESS, HINT_TYPE_KEYWORDS, HINT_TYPE_POSTER, HINT_TYPE_TAGLINE } from '$lib/types/supabasetables';
-	import { getInDisplayTextFormat} from '$lib/types/hint';
+	import { GAME_STATUS_IN_PROGRESS } from '$lib/types/supabasetables';
 	import Hint from '$lib/components/+Hint.svelte';
 	import TakeHintSection from '$lib/components/+TakeHintSection.svelte';
 
@@ -363,7 +362,6 @@
 				<TakeHintSection {availableHints}
 								 {usedHints}
 								 {takeHint}
-								 {getInDisplayTextFormat}
 								 {onHintButtonClick}
 								 bind:showChooseHintModal={showChooseHintModal}/>
 				{/if}

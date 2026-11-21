@@ -25,7 +25,7 @@
 {:else if hint.hintType === HINT_TYPE_KEYWORDS}
     <div class="bg-base-200/60 rounded-box px-4 py-3 flex flex-wrap justify-center gap-2">
         {#each (hint.value as string[]) as keyword}
-            <span class="badge badge-outline text-base-content/70 border-base-content/70 p-3">{keyword}</span>
+            <span class="badge badge-soft text-base-content/70   p-3">{keyword}</span>
         {/each}
     </div>
 {:else if hint.hintType === HINT_TYPE_POSTER}
