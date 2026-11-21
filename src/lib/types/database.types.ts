@@ -1,4 +1,4 @@
-﻿export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
 	// Allows to automatically instantiate createClient with right options
@@ -33,6 +33,38 @@ export type Database = {
 						columns: ['movie_id'];
 						isOneToOne: false;
 						referencedRelation: 'movies';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			game_session_hints: {
+				Row: {
+					created_at: string;
+					game_id: string;
+					hint_type: string;
+					id: string;
+					unlocked_at_guess: number;
+				};
+				Insert: {
+					created_at?: string;
+					game_id: string;
+					hint_type: string;
+					id?: string;
+					unlocked_at_guess: number;
+				};
+				Update: {
+					created_at?: string;
+					game_id?: string;
+					hint_type?: string;
+					id?: string;
+					unlocked_at_guess?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'game_session_hints_game_id_fkey';
+						columns: ['game_id'];
+						isOneToOne: false;
+						referencedRelation: 'game_sessions';
 						referencedColumns: ['id'];
 					}
 				];

@@ -25,6 +25,7 @@ export type Movie = Omit<Tables<'movies'>, 'cast_members' | 'certifications' | '
   video?: string | null;
   cast_members: CastMember[];
   certifications: Record<string, string>;
+  hints?: MovieHints | null;
 };
 
 export const movieHintsTable = 'movie_hints' satisfies TableName;
@@ -45,6 +46,7 @@ export type DailyMovieWithDetails = Pick<Tables<'daily_movies'>, 'play_date' | '
 /**
  * Allowed status states for a game session ('in_progress', 'won', 'lost', or 'gave_up').
  */
+export const GAME_STATUS_IN_PROGRESS = 'in_progress';
 export type GameSessionStatus = 'in_progress' | 'won' | 'lost' | 'gave_up';
 
 export const gamesSessionTable = 'game_sessions' satisfies TableName;
@@ -76,9 +78,28 @@ export interface GameSessionGuess {
 }
 
 /**
+ * Allowed hint categories for a game session.
+ */
+export const HINT_TYPE_TAGLINE = 'tagline';
+export const HINT_TYPE_KEYWORDS = 'keywords';
+export const HINT_TYPE_POSTER = 'poster';
+export const HINT_TYPES = [HINT_TYPE_TAGLINE, HINT_TYPE_KEYWORDS, HINT_TYPE_POSTER] as const;
+export type HintType = (typeof HINT_TYPES)[number];
+
+export const gameSessionHintsTable = 'game_session_hints' satisfies TableName;
+/**
+ * Represents a row in the `public.game_session_hints` table.
+ * Tracks which hints have been unlocked and used in a game session.
+ */
+export type GameSessionHint = Omit<Tables<'game_session_hints'>, 'hint_type'> & {
+  hint_type: HintType;
+};
+
+/**
  * Represents the full game session response including its history of guesses and joined movie data.
  */
 export interface GameSessionResponse extends GameSession {
   guesses: GameSessionGuess[];
+  taken_hints?: GameSessionHint[];
 }
 

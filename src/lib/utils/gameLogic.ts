@@ -1,6 +1,15 @@
-import { Match, type GuessResponse, type GameSessionClientResponse } from "$lib/types/guess";
-import type { Movie, GameSessionResponse, GameSessionStatus } from "$lib/types/supabasetables";
-import { PUBLIC_TMDB_THUMB_URL } from "$env/static/public";
+import { Match, type GuessResponse, type GameSessionClientResponse, type UsedHint } from "$lib/types/guess";
+import {
+  HINT_TYPES,
+  type Movie,
+  type MovieHints,
+  type GameSessionHint,
+  type GameSessionResponse,
+  type GameSessionStatus,
+  type HintType,
+  GAME_STATUS_IN_PROGRESS
+} from "$lib/types/supabasetables";
+import { PUBLIC_R2_IMAGE_URL, PUBLIC_TMDB_THUMB_URL } from "$env/static/public";
 
 const CAST_MEMBER_DISPLAY_COUNT: number = 5;
 
@@ -161,12 +170,119 @@ export function mapGameSessionToClientResponse(
     : {
       title: dailyMovie.title,
       videoUrl: dailyMovie.video ? `https://www.youtube.com/embed/${dailyMovie.video}` : null
-    }; 
+    };
 
+  const guessCount = (gameSession.guesses ?? []).filter((g) => !g.is_correct).length;
+  const { availableHints, usedHints, unusedHintsCount } = mapHintsForClient(
+    gameSession.taken_hints ?? [],
+    dailyMovie.hints,
+    guessCount,
+    gameSession.status
+  );
 
   return {
     guesses: mappedGuesses,
     gameStatus: gameSession.status,
-    targetMovie: targetMovie
+    targetMovie: targetMovie,
+    availableHints: {
+      unusedHintsCount: unusedHintsCount,
+      hints: availableHints
+    },
+    usedHints
+  };
+}
+
+export function buildPosterHintUrl(posterKey: string | null | undefined): string | null {
+  if (!posterKey || !PUBLIC_R2_IMAGE_URL) {
+    return null;
+  }
+
+  const url = new URL(PUBLIC_R2_IMAGE_URL);
+  url.pathname += url.pathname.endsWith('/') ? '' : '/';
+
+  
+  return `${url}${posterKey}.webp`;
+}
+
+const KEYWORD_COUNT: number = 5;
+
+export function getHintValue(
+  movieHints: MovieHints | null | undefined,
+  hintType: HintType
+): string | string[] | null {
+  if (!movieHints) {
+    return null;
+  }
+
+  if (hintType === 'tagline') {
+    return movieHints.tagline?.trim() ? movieHints.tagline : null;
+  }
+  if (hintType === 'keywords') {
+    return (movieHints.keywords?.length ?? 0) > 0 ? movieHints.keywords.slice(0, KEYWORD_COUNT) : null;
+  }
+  if (hintType === 'poster') {
+    return buildPosterHintUrl(movieHints.poster_key);
+  }
+  return null;
+}
+
+const HINT_UNLOCK_THRESHOLD_LOWER: number = 5;
+const HINT_UNLOCK_THRESHOLD_HIGHER: number = 9;
+
+export function getUnlockedHintCount(unsuccessfulGuessCount: number): number {
+  if (unsuccessfulGuessCount >= HINT_UNLOCK_THRESHOLD_HIGHER) return 2;
+  if (unsuccessfulGuessCount >= HINT_UNLOCK_THRESHOLD_LOWER) return 1;
+  return 0;
+}
+
+function mapHintsForClient(
+  takenHints: GameSessionHint[],
+  movieHints: MovieHints | null | undefined,
+  guessCount: number,
+  status: GameSessionStatus
+): { availableHints: HintType[]; usedHints: UsedHint[], unusedHintsCount: number } {
+  const takenHintTypes = takenHints.map((h) => h.hint_type);
+
+  const sortedTakenHints = [...takenHints].sort((a, b) => {
+    if (a.unlocked_at_guess !== b.unlocked_at_guess) {
+      return a.unlocked_at_guess - b.unlocked_at_guess;
+    }
+    return a.created_at.localeCompare(b.created_at);
+  });
+
+  const usedHints: UsedHint[] = [];
+  for (const taken of sortedTakenHints) {
+    const value = getHintValue(movieHints, taken.hint_type);
+    if (value) {
+      usedHints.push({
+        hintType: taken.hint_type,
+        value,
+        unlockedAtGuess: taken.unlocked_at_guess
+      });
+    }
+  }
+
+  const unlockedHintCount: number = getUnlockedHintCount(guessCount);
+  const canUnlockHint = status === GAME_STATUS_IN_PROGRESS  && takenHints.length < unlockedHintCount;
+  let unusedHintsCount = status === GAME_STATUS_IN_PROGRESS 
+    ? unlockedHintCount - takenHints.length
+    : 0; 
+
+  // if the hint has not been used
+  const availableHints = canUnlockHint
+    ? HINT_TYPES.filter(
+        (hintType) =>
+          !takenHintTypes.some((t) => t === hintType) && getHintValue(movieHints, hintType) !== null
+      )
+    : [];
+
+  unusedHintsCount = unusedHintsCount > availableHints.length 
+    ? availableHints.length 
+    : unusedHintsCount;
+
+  return { 
+    availableHints, 
+    usedHints, 
+    unusedHintsCount 
   };
 }

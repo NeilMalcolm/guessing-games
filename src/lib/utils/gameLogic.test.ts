@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mapGameSessionToClientResponse } from './gameLogic';
+import { buildPosterHintUrl, mapGameSessionToClientResponse } from './gameLogic';
 import type { GameSessionResponse, Movie } from '$lib/types/supabasetables';
 
 const mockMovie: Movie = {
@@ -91,5 +91,168 @@ describe('mapGameSessionToClientResponse targetMovie video URL exposure', () => 
 			title: 'Fight Club',
 			videoUrl: null
 		});
+	});
+});
+
+describe('mapGameSessionToClientResponse hints mapping', () => {
+	const movieWithHints: Movie = {
+		...mockMovie,
+		hints: {
+			movie_id: 1,
+			tagline: 'Mischief. Mayhem. Soap.',
+			keywords: ['dual identity', 'support group', 'nihilism'],
+			poster_key: '1',
+			created_at: '2026-01-01T00:00:00Z',
+			hints_fetched_at: '2026-01-01T00:00:00Z'
+		}
+	};
+
+	function createWrongGuesses(count: number): GameSessionResponse['guesses'] {
+		return Array.from({ length: count }, (_, idx) => ({
+			id: `guess-${idx + 1}`,
+			guess_number: idx + 1,
+			movie_id: 100 + idx,
+			is_correct: false,
+			created_at: '2026-10-12T00:00:00Z',
+			movie: { ...mockMovie, id: 100 + idx, title: `Wrong Movie ${idx + 1}` }
+		}));
+	}
+
+	it('returns empty availableHints.hints and usedHints when movie has no hints', () => {
+		const session: GameSessionResponse = {
+			...createSession('in_progress'),
+			guesses: createWrongGuesses(6)
+		};
+		const result = mapGameSessionToClientResponse(session, mockMovie);
+
+		expect(result.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
+		expect(result.usedHints).toEqual([]);
+	});
+
+	it('returns empty availableHints before 5 unsuccessful guesses', () => {
+		const session: GameSessionResponse = {
+			...createSession('in_progress'),
+			guesses: createWrongGuesses(4)
+		};
+		const result = mapGameSessionToClientResponse(session, movieWithHints);
+
+		expect(result.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
+		expect(result.usedHints).toEqual([]);
+	});
+
+	it('returns non-empty hint types after 5 unsuccessful guesses when none are taken', () => {
+		const moviePartialHints: Movie = {
+			...mockMovie,
+			hints: {
+				movie_id: 1,
+				tagline: '   ',
+				keywords: ['dual identity'],
+				poster_key: '1',
+				created_at: '2026-01-01T00:00:00Z',
+				hints_fetched_at: '2026-01-01T00:00:00Z'
+			}
+		};
+		const session: GameSessionResponse = {
+			...createSession('in_progress'),
+			guesses: createWrongGuesses(6)
+		};
+		const result = mapGameSessionToClientResponse(session, moviePartialHints);
+
+		expect(result.availableHints).toEqual({ unusedHintsCount: 1, hints: ['keywords', 'poster'] });
+		expect(result.usedHints).toEqual([]);
+	});
+
+	it('keeps first hint available on turns 7 and 8 if not taken after turn 6', () => {
+		const session: GameSessionResponse = {
+			...createSession('in_progress'),
+			guesses: createWrongGuesses(7)
+		};
+		const result = mapGameSessionToClientResponse(session, movieWithHints);
+
+		expect(result.availableHints).toEqual({
+			unusedHintsCount: 1,
+			hints: ['tagline', 'keywords', 'poster']
+		});
+	});
+
+	it('returns empty availableHints on turns 6-8 once 1 hint has been taken', () => {
+		const session: GameSessionResponse = {
+			...createSession('in_progress'),
+			guesses: createWrongGuesses(8),
+			taken_hints: [
+				{
+					id: 'hint-1',
+					game_id: 'session-123',
+					hint_type: 'tagline',
+					unlocked_at_guess: 6,
+					created_at: '2026-10-12T00:01:00Z'
+				}
+			]
+		};
+		const result = mapGameSessionToClientResponse(session, movieWithHints);
+
+		expect(result.usedHints).toEqual([{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.', unlockedAtGuess: 6 }]);
+		expect(result.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
+	});
+
+	it('allows taking 2 hints after 9 unsuccessful guesses if none were taken yet', () => {
+		const sessionWithZeroTaken: GameSessionResponse = {
+			...createSession('in_progress'),
+			guesses: createWrongGuesses(9),
+			taken_hints: []
+		};
+		expect(mapGameSessionToClientResponse(sessionWithZeroTaken, movieWithHints).availableHints).toEqual({
+			unusedHintsCount: 2,
+			hints: ['tagline', 'keywords', 'poster']
+		});
+
+		const sessionWithOneTaken: GameSessionResponse = {
+			...sessionWithZeroTaken,
+			taken_hints: [
+				{
+					id: 'hint-1',
+					game_id: 'session-123',
+					hint_type: 'tagline',
+					unlocked_at_guess: 9,
+					created_at: '2026-10-12T00:01:00Z'
+				}
+			]
+		};
+		const resultOne = mapGameSessionToClientResponse(sessionWithOneTaken, movieWithHints);
+		expect(resultOne.usedHints).toEqual([{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.', unlockedAtGuess: 9 }]);
+		expect(resultOne.availableHints).toEqual({
+			unusedHintsCount: 1,
+			hints: ['keywords', 'poster']
+		});
+
+		const sessionWithTwoTaken: GameSessionResponse = {
+			...sessionWithZeroTaken,
+			taken_hints: [
+				...sessionWithOneTaken.taken_hints!,
+				{
+					id: 'hint-2',
+					game_id: 'session-123',
+					hint_type: 'poster',
+					unlocked_at_guess: 9,
+					created_at: '2026-10-12T00:02:00Z'
+				}
+			]
+		};
+		const resultTwo = mapGameSessionToClientResponse(sessionWithTwoTaken, movieWithHints);
+		expect(resultTwo.usedHints).toEqual([
+			{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.', unlockedAtGuess: 9 },
+			{ hintType: 'poster', value: buildPosterHintUrl('1'), unlockedAtGuess: 9 }
+		]);
+		expect(resultTwo.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
+	});
+
+	it('returns empty availableHints.hints when game is finished even if hint slots were unused', () => {
+		const session: GameSessionResponse = {
+			...createSession('won'),
+			guesses: createWrongGuesses(9)
+		};
+		const result = mapGameSessionToClientResponse(session, movieWithHints);
+
+		expect(result.availableHints).toEqual({ unusedHintsCount: 0, hints: [] });
 	});
 });

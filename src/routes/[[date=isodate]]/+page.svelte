@@ -4,11 +4,14 @@
 	import SearchItem from '$lib/components/+SearchItem.svelte';
 	import Guess from '$lib/components/+Guess.svelte';
 	import ResultsModal from '$lib/components/+ResultsModal.svelte';
-	import type { GameSessionClientResponse, GuessResponse, TargetMovie } from '$lib/types/guess';
+	import type { AvailableHints, GameSessionClientResponse, GuessResponse, TargetMovie, UsedHint } from '$lib/types/guess';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/components/+Dialog.svelte';
-	import { moviesTable } from '$lib/types/supabasetables';
+	import { logger } from '@sentry/sveltekit';
+	import { GAME_STATUS_IN_PROGRESS } from '$lib/types/supabasetables';
+	import Hint from '$lib/components/+Hint.svelte';
+	import TakeHintSection from '$lib/components/+TakeHintSection.svelte';
 
 	let {
 		data,
@@ -22,26 +25,73 @@
 
 	let searchQuery = $state('');
 	let searchResults: SearchResponse | null = $state(null);
-	let gameStatus: string = $state(untrack(() => data.gameStatus ?? 'in_progress'));
-	let isGameFinished: boolean = $derived(gameStatus !== 'in_progress');
+	let gameStatus: string = $state(untrack(() => data.gameStatus ?? GAME_STATUS_IN_PROGRESS));
+	let isGameFinished: boolean = $derived(gameStatus !== GAME_STATUS_IN_PROGRESS);
 	let newestGuessIndex: number = $state(-1);
 	let showResults = $state(false);
-	let showViewResults = $state(untrack(() => data.gameStatus !== 'in_progress'));
+	let showViewResults = $state(untrack(() => data.gameStatus !== GAME_STATUS_IN_PROGRESS));
 
 	let guesses: GuessResponse[] = $state(untrack(() => data.guesses ?? []));
 	let guessedMovieIds = $derived(guesses.map((g) => g.movieId));
+
+	let availableHints: AvailableHints | undefined = $state(untrack(() => data?.availableHints))
+	let usedHints: UsedHint[] = $state(untrack(() => data?.usedHints ?? []));
+	
 	let targetMovie: TargetMovie | null | undefined = $state(null);
 	let isSearching: boolean = $state(false);
 	let showSearchDropdown: boolean = $state(true);
 	let searchController: AbortController | null = null;
 
 	let showGiveUpModal: boolean = $state(false);
+	let showChooseHintModal: boolean = $state(false);
+	let showPosterModal: boolean = $state(false);
+	let activePosterUrl: string | null = $state(null);
+
+	type TimelineItem =
+		| { kind: 'guess'; guess: GuessResponse; guessNumber: number; guessIndex: number }
+		| { kind: 'hint'; hint: UsedHint };
+
+	let timelineItems: TimelineItem[] = $derived.by(() => {
+		const hintsByGuess = new Map<number, UsedHint[]>();
+		for (const hint of usedHints) {
+			const group = hintsByGuess.get(hint.unlockedAtGuess) ?? [];
+			group.push(hint);
+			hintsByGuess.set(hint.unlockedAtGuess, group);
+		}
+
+		const items: TimelineItem[] = [];
+		for (const [guessStep, hints] of [...hintsByGuess.entries()].sort((a, b) => b[0] - a[0])) {
+			if (guessStep > guesses.length) {
+				for (const hint of hints) {
+					items.push({ kind: 'hint', hint });
+				}
+			}
+		}
+
+		guesses.forEach((guess, index) => {
+			const guessNumber = guesses.length - index;
+			const hintsAfterGuess = hintsByGuess.get(guessNumber) ?? [];
+			for (const hint of hintsAfterGuess) {
+				items.push({ kind: 'hint', hint });
+			}
+			items.push({ kind: 'guess', guess, guessNumber, guessIndex: index });
+		});
+
+		for (const hint of hintsByGuess.get(0) ?? []) {
+			items.push({ kind: 'hint', hint });
+		}
+
+		return items;
+	});
+
 
 	$effect(() => {
 		guesses = data.guesses ?? [];
-		gameStatus = data.gameStatus ?? 'in_progress';
+		gameStatus = data.gameStatus ?? GAME_STATUS_IN_PROGRESS;
 		targetMovie = data.targetMovie;
-		showViewResults = data.gameStatus !== 'in_progress';
+		showViewResults = data.gameStatus !== GAME_STATUS_IN_PROGRESS;
+		availableHints = data.availableHints;
+		usedHints = data.usedHints ?? [];
 	});
 
 	/**
@@ -146,9 +196,7 @@
 		const sessionData: GameSessionClientResponse = await response.json();
 
 		newestGuessIndex = 0;
-		guesses = sessionData.guesses;
-		gameStatus = sessionData.gameStatus;
-		targetMovie = sessionData.targetMovie;
+		rehydrateSessionData(sessionData);
 	}
 
 	/**
@@ -177,9 +225,8 @@
 		}
 
 		const sessionData: GameSessionClientResponse = await response.json();
-		guesses = sessionData.guesses;
-		gameStatus = sessionData.gameStatus;
-		targetMovie = sessionData.targetMovie;
+		rehydrateSessionData(sessionData);
+		
 		showViewResults = true;
 		showResults = true;
 	}
@@ -211,6 +258,42 @@
 		.results
 		.forEach((sr) => sr.alreadyGuessed = guessedMovieIds.includes(sr.id));
 	}
+
+	async function onHintButtonClick() {
+		showChooseHintModal = true;
+	}
+
+	async function takeHint(hint: string) {
+		let response = await fetch('/movies/hint', {
+			method: 'POST',
+			headers: {
+				'Content-Type' : 'application/json'
+			},
+			body: JSON.stringify({ date: data.playDate, hint: hint.toString() })
+		})
+
+		if (!response.ok) {
+			logger.error('Error taking a hint {hint}, {response}', { hint: hint, response: response });
+			// TODO: show error.
+			return;
+		}
+
+		const sessionData: GameSessionClientResponse = await response.json();
+
+		rehydrateSessionData(sessionData);
+
+		showChooseHintModal = false;
+	}
+
+	function rehydrateSessionData(sessionData: GameSessionClientResponse) { 
+		guesses = sessionData.guesses;
+		gameStatus = sessionData.gameStatus;
+		availableHints = sessionData.availableHints;
+		usedHints = sessionData.usedHints ?? [];
+		
+		// only populated at the end of the game if lost/won
+		targetMovie = sessionData.targetMovie;
+	}
 </script>
 
 <main>
@@ -233,7 +316,6 @@
 						Give Up
 					</button>
 					<Dialog title="Give up on Guessing the Movie?"
-							
 							acceptText="Give Up" 
 							closeText="Keep Guessing"
 							acceptAction={onGiveUp}
@@ -276,17 +358,31 @@
 				</div>
 			{/if}
 			<div class="mt-2">
+				{#if !isGameFinished && (availableHints?.unusedHintsCount ?? 0) > 0}
+				<TakeHintSection {availableHints}
+								 {usedHints}
+								 {takeHint}
+								 {onHintButtonClick}
+								 bind:showChooseHintModal={showChooseHintModal}/>
+				{/if}
 				<ul>
-					{#each guesses as guess, index (`${guess.title}_${guesses.length - index}`)}
-						<li>
-							<Guess
-								{guess}
-								index={guesses.length - index}
-								animate={index === newestGuessIndex}
-								delay={guessRevealDelay}
-								onRevealFinished={onGuessRevealed}
-							/>
-						</li>
+					{#each timelineItems as item (item.kind === 'guess' ? `guess_${item.guess.title}_${item.guessNumber}` : `hint_${item.hint.hintType}`)}
+						{#if item.kind === 'hint'}
+							<li class="my-2">
+								<Hint hint={item.hint}
+									  bind:showPosterModal={showPosterModal}/>
+							</li>
+						{:else}
+							<li>
+								<Guess
+									guess={item.guess}
+									index={item.guessNumber}
+									animate={item.guessIndex === newestGuessIndex}
+									delay={guessRevealDelay}
+									onRevealFinished={onGuessRevealed}
+								/>
+							</li>
+						{/if}
 					{/each}
 				</ul>
 			</div>
@@ -294,10 +390,11 @@
 	</div>
 </main>
 
+{#if isGameFinished}
 <ResultsModal
 	bind:open={showResults}
 	{guesses}
 	{targetMovie}
 	won={gameStatus === 'won'}
-	playDate={data.playDate}
-/>
+	playDate={data.playDate}/>
+{/if}

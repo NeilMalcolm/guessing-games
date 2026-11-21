@@ -52,7 +52,6 @@ interface MoviesResult {
  * @returns an array of MovieResult objects containing the id of the movies in this batch. 
  */
 async function getMovieBatchFromDatabase() : Promise<MoviesResult[]> {
-
     // batch of movies without any hints
     const { data: movies, error: fetchError } = await supabase
         .from("movies")
@@ -66,6 +65,7 @@ async function getMovieBatchFromDatabase() : Promise<MoviesResult[]> {
         throw fetchError;
     }
 
+    logger.info("Fetched movies", { ids: movies.map(m => ({ id: m.id }))});
     return (movies ?? []).map(m => 
     ({ 
         id: m.id 
@@ -90,6 +90,8 @@ async function getMovieHintFromTmdbApi(movie: MoviesResult): Promise<TmdbHintRes
   }
 
   let rawResponse = await response.json();
+
+  logger.info("Fetched hint from Tmdb Api", { id: movie.id });
   return rawResponse as TmdbHintResult;
 }
 
@@ -107,6 +109,7 @@ async function pixelatePosterForHint(hint: TmdbHintResult) : Promise<Buffer> {
 
   const rawImageData = Buffer.from(await response.arrayBuffer());
 
+  logger.info("Pixelated image for movie", { movie: hint.id });
   return sharp(rawImageData)
     .resize(20, 30, { fit : "fill" })
     .webp({ quality: 80 })
@@ -150,6 +153,8 @@ async function uploadToR2Bucket(pixelatedPosterBuffer: Buffer, key: string, cont
           ContentType: contentType
       })
     );
+    
+    logger.info("Uploaded image to R2 for key", { key: key });
 }
 
 function createRandomIdForPixelatedPosterPath(): string {

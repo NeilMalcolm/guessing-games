@@ -555,3 +555,162 @@ describe('+page.svelte final guess reveal callback', () => {
 		expect(guessTiles.elements()).toHaveLength(1);
 	});
 });
+
+describe('+page.svelte hints', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('does not show the hint prompt when no hints are unlocked', async () => {
+		render(Page, {
+			data: createPageData({
+				gameStatus: 'in_progress',
+				availableHints: { unusedHintsCount: 0, hints: [] },
+				usedHints: []
+			})
+		});
+
+		await expect.element(page.getByText('You have unlocked a hint')).not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: 'Get Hint' })).not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: 'View Poster' })).not.toBeInTheDocument();
+	});
+
+	it('does not show the hint prompt when the game is finished even if unusedHintsCount > 0', async () => {
+		render(Page, {
+			data: createPageData({
+				guesses: [createMockGuess(true)],
+				gameStatus: 'won',
+				availableHints: { unusedHintsCount: 1, hints: ['tagline'] },
+				usedHints: []
+			})
+		});
+
+		await expect.element(page.getByText('You have unlocked a hint')).not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: 'Get Hint' })).not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: 'View Poster' })).not.toBeInTheDocument();
+	});
+
+	it('opens the hint modal, submits the chosen hint, and renders the revealed hint', async () => {
+		const hintResponse: GameSessionClientResponse = {
+			guesses: [createMockGuess(false)],
+			gameStatus: 'in_progress',
+			targetMovie: null,
+			availableHints: { unusedHintsCount: 0, hints: [] },
+			usedHints: [
+				{
+					hintType: 'tagline',
+					value: 'Your mind is the scene of the crime.',
+					unlockedAtGuess: 1
+				}
+			]
+		};
+
+		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+			if (String(url) === '/movies/hint') {
+				return new Response(JSON.stringify(hintResponse), { status: 200 });
+			}
+			return new Response(JSON.stringify({ ok: true }), { status: 200 });
+		});
+
+		render(Page, {
+			data: createPageData({
+				guesses: [createMockGuess(false)],
+				gameStatus: 'in_progress',
+				availableHints: {
+					unusedHintsCount: 1,
+					hints: ['tagline', 'keywords', 'poster']
+				},
+				usedHints: []
+			})
+		});
+
+		await expect.element(page.getByText('You have unlocked a hint')).toBeInTheDocument();
+		await page.getByRole('button', { name: 'Get Hint' }).click();
+
+		const dialog = page.getByRole('dialog');
+		await expect.element(dialog.getByRole('heading', { name: 'Need a Hint?' })).toBeInTheDocument();
+		await expect.element(dialog.getByRole('button', { name: 'Tagline' })).toBeInTheDocument();
+		await expect.element(dialog.getByRole('button', { name: 'Keywords' })).toBeInTheDocument();
+		await expect.element(dialog.getByRole('button', { name: 'Poster' })).toBeInTheDocument();
+
+		await dialog.getByRole('button', { name: 'Tagline' }).click();
+
+		const hintCalls = fetchSpy.mock.calls.filter(([url]) => String(url) === '/movies/hint');
+		expect(hintCalls).toHaveLength(1);
+		const [, init] = hintCalls[0];
+		expect(init?.method).toBe('POST');
+		expect(init?.headers).toEqual({ 'Content-Type': 'application/json' });
+		expect(JSON.parse(String(init?.body))).toEqual({
+			date: '2026-10-12',
+			hint: 'tagline'
+		});
+
+		await expect.element(page.getByText('"Your mind is the scene of the crime."')).toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: 'Get Hint' })).not.toBeInTheDocument();
+		await expect.element(page.getByRole('heading', { name: 'Need a Hint?' })).not.toBeInTheDocument();
+	});
+
+	it('renders tagline and keywords inline between guesses and opens poster hint in a dialog', async () => {
+		const guess2 = { ...createMockGuess(false, 2), title: 'Interstellar' };
+		const guess1 = { ...createMockGuess(false, 1), title: 'Inception' };
+
+		render(Page, {
+			data: createPageData({
+				guesses: [guess2, guess1],
+				gameStatus: 'in_progress',
+				availableHints: { unusedHintsCount: 0, hints: [] },
+				usedHints: [
+					{ hintType: 'tagline', value: 'Mischief. Mayhem. Soap.', unlockedAtGuess: 1 },
+					{ hintType: 'keywords', value: ['dual identity', 'support group'], unlockedAtGuess: 2 },
+					{ hintType: 'poster', value: 'https://example.com/poster.webp', unlockedAtGuess: 2 }
+				]
+			})
+		});
+
+		await expect.element(page.getByText('"Mischief. Mayhem. Soap."')).toBeInTheDocument();
+		await expect.element(page.getByText('dual identity')).toBeInTheDocument();
+		await expect.element(page.getByText('support group')).toBeInTheDocument();
+
+		const listText = Array.from(document.querySelectorAll('main ul > li')).map(
+			(li) => li.textContent ?? ''
+		);
+		expect(listText).toHaveLength(5);
+		expect(listText[0]).toContain('dual identity');
+		expect(listText[1]).toContain('View Poster');
+		expect(listText[2]).toContain('Interstellar');
+		expect(listText[3]).toContain('Mischief. Mayhem. Soap.');
+		expect(listText[4]).toContain('Inception');
+
+		const viewPosterBtn = page.getByRole('button', { name: 'View Poster' });
+		await expect.element(viewPosterBtn).toBeInTheDocument();
+		await viewPosterBtn.click();
+
+		const dialog = page.getByRole('dialog');
+		await expect.element(dialog.getByRole('heading', { name: 'Poster' })).toBeInTheDocument();
+		expect(document.querySelector('dialog[open] .modal-action')).toBeNull();
+		const images = document.querySelectorAll('dialog[open] img[src="https://example.com/poster.webp"]');
+		expect(images).toHaveLength(1);
+	});
+
+	it('keeps the hint modal open when taking a hint fails', async () => {
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+			new Response(JSON.stringify({ message: 'Cannot take hint yet.' }), { status: 400 })
+		);
+
+		render(Page, {
+			data: createPageData({
+				guesses: [createMockGuess(false)],
+				gameStatus: 'in_progress',
+				availableHints: { unusedHintsCount: 1, hints: ['tagline'] },
+				usedHints: []
+			})
+		});
+
+		await page.getByRole('button', { name: 'Get Hint' }).click();
+		const dialog = page.getByRole('dialog');
+		await dialog.getByRole('button', { name: 'Tagline' }).click();
+
+		await expect.element(dialog.getByRole('heading', { name: 'Need a Hint?' })).toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: 'Get Hint' })).toBeInTheDocument();
+	});
+});

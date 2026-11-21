@@ -33,7 +33,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const playDate = parseAndValidatePlayDate(body?.date);
 
 	// get today's movie
-	console.log(`guessed movie ${guessedMovieId}`);
 	const dailyMovie = await getRequiredDailyMovie(playDate);
 
 	const { data: guessMovieDetails, error: guessMovieError } = await supabaseAdmin
@@ -48,7 +47,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const gameSession = await addGuessToDatabase(guessMovieDetails, dailyMovie, locals);
 	const clientResponse = mapGameSessionToClientResponse(gameSession, dailyMovie);
-	console.log(clientResponse);
+
 	return json(clientResponse);
 };
 

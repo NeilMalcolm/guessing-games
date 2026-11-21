@@ -39,7 +39,15 @@ export const DAILY_MOVIE_SELECT = `
     rating,
     min_age,
     certifications,
-    video
+    video,
+    hints:movie_hints (
+      created_at,
+      hints_fetched_at,
+      keywords,
+      movie_id,
+      poster_key,
+      tagline
+    )
   )
 `;
 
@@ -51,6 +59,13 @@ export const GAME_SESSION_SELECT = `
   max_attempts,
   created_at,
   updated_at,
+  taken_hints: game_session_hints (
+    id,
+    game_id,
+    hint_type,
+    unlocked_at_guess,
+    created_at
+  ),
   guesses: guesses (
     id,
     guess_number,
@@ -173,7 +188,8 @@ export async function createGameSession(
   return {
     ...newSession,
     status: newSession.status as GameSessionStatus,
-    guesses: []
+    guesses: [],
+    taken_hints: []
   };
 }
 
