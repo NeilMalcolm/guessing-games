@@ -12,6 +12,7 @@
 	import { GAME_STATUS_IN_PROGRESS } from '$lib/types/supabasetables';
 	import Hint from '$lib/components/+Hint.svelte';
 	import TakeHintSection from '$lib/components/+TakeHintSection.svelte';
+	import SearchResults from '$lib/components/+SearchResults.svelte';
 
 	let {
 		data,
@@ -39,7 +40,7 @@
 	
 	let targetMovie: TargetMovie | null | undefined = $state(null);
 	let isSearching: boolean = $state(false);
-	let showSearchDropdown: boolean = $state(true);
+	let showSearchDropdown: boolean = $state(false);
 	let searchController: AbortController | null = null;
 
 	let showGiveUpModal: boolean = $state(false);
@@ -326,23 +327,10 @@
 					</Dialog>
 				</div>
 
-				{#if showSearchDropdown && (isSearching || searchResults)}
-					<!-- preventDefault on mousedown keeps focus in the input so the list isn't hidden before a click lands. -->
-					<!-- svelte-ignore a11y_no_noninteractive_element_interactions: the handler only prevents focus loss, it adds no interaction -->
-					<ul
-						onmousedown={(e) => e.preventDefault()}
-						class="dropdown-content z-50 list bg-base-100 rounded-box shadow-xl border border-base-300 mt-2 max-h-[500px] overflow-y-auto w-full">
-						{#if searchResults}
-								{#each searchResults.results as searchResult}
-									<li class="w-full">
-										<SearchItem {searchResult} {onResultClicked} />
-									</li>
-								{/each}
-						{:else}
-							<span class="skeleton skeleton-text pl-5 pr-5 pt-3 pb-4">Thumbing through film reels...</span>
-						{/if}
-					</ul>
-				{/if}
+				<SearchResults isActive={showSearchDropdown}
+							   {isSearching}
+							   {searchResults}
+							   {onResultClicked}/>
 			</div>
 			{#if showViewResults}
 				{@const won = gameStatus === 'won'}

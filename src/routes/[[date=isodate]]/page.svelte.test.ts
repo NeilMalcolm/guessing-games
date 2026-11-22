@@ -537,7 +537,7 @@ describe('+page.svelte final guess reveal callback', () => {
 		await searchInput.fill('Inception');
 
 		// Search result for the already-guessed movie shows indicator
-		await expect.element(page.getByText('Already guessed...')).toBeInTheDocument();
+		await expect.element(page.getByText('Already guessed')).toBeInTheDocument();
 
 		// Clicking the already-guessed movie result button
 		const alreadyGuessedBtn = page.getByRole('button', { name: /Already guessed/i });
@@ -550,7 +550,7 @@ describe('+page.svelte final guess reveal callback', () => {
 		expect(guessCalls).toHaveLength(0);
 
 		// Dropdown remains open and no additional guess tile was added
-		await expect.element(page.getByText('Already guessed...')).toBeInTheDocument();
+		await expect.element(page.getByText('Already guessed')).toBeInTheDocument();
 		const guessTiles = page.getByTestId('guess-tile');
 		expect(guessTiles.elements()).toHaveLength(1);
 	});

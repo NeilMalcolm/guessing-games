@@ -32,7 +32,7 @@
     <div>     
         <div class="text-lg text-base-content {searchResult.alreadyGuessed ? "italic opacity-40" : "font-semibold"}">{searchResult.title}</div>
         {#if searchResult.alreadyGuessed}
-            <div class="italic text-base-content opacity-20">Already guessed...</div>
+            <div class="italic text-base-content/20">Already guessed</div>
         {/if}
     </div>
 </button>
